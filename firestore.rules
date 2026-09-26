@@ -1,0 +1,199 @@
+rules_version = '2';
+
+// Tindahan App security rules.
+// - Every read requires a members/{uid} doc.
+// - Delete is never allowed (no rule grants it).
+// - Corrections are voids: only the void fields may change, false -> true, once.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(uid) {
+      return /databases/$(database)/documents/members/$(uid);
+    }
+
+    function isMember() {
+      return signedIn() && exists(memberPath(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isMember() && get(memberPath(request.auth.uid)).data.role == 'admin';
+    }
+
+    function closurePath(businessDate) {
+      return /databases/$(database)/documents/day_closures/$(businessDate);
+    }
+
+    function isDateString(v) {
+      return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isText(v, maxLen) {
+      return v is string && v.size() > 0 && v.size() <= maxLen;
+    }
+
+    function hasExactly(data, keys) {
+      return data.keys().hasAll(keys) && data.keys().hasOnly(keys);
+    }
+
+    // An entry on a closed business date must be an explicit late entry, unless it was
+    // recorded before the day was closed (an offline device syncing after another device
+    // closed the day). Without this, such offline writes would be rejected and lost.
+    function closedDateOk(data, recordedAt) {
+      return !exists(closurePath(data.business_date))
+        || data.is_late_entry == true
+        || recordedAt < get(closurePath(data.business_date)).data.closed_at;
+    }
+
+    function newVoidFieldsOk(data) {
+      return data.voided == false
+        && data.void_reason == null
+        && data.voided_by == null
+        && data.voided_at == null;
+    }
+
+    function isValidVoid(owner) {
+      let before = resource.data;
+      let after = request.resource.data;
+      return after.diff(before).affectedKeys().hasOnly(['voided', 'void_reason', 'voided_by', 'voided_at'])
+        && before.voided == false
+        && after.voided == true
+        && isText(after.void_reason, 500)
+        && after.voided_by == request.auth.uid
+        && after.voided_at == request.time
+        && (owner == request.auth.uid || isAdmin());
+    }
+
+    // ---------- members ----------
+
+    match /members/{uid} {
+      allow read: if isMember();
+      allow create: if isAdmin();
+      allow update: if isAdmin()
+        || (isMember()
+          && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last_sync_at'])
+          && request.resource.data.last_sync_at == request.time);
+    }
+
+    // ---------- sales ----------
+
+    function isValidNewSale(d) {
+      return hasExactly(d, [
+          'item_name', 'item_key', 'qty', 'unit_price', 'subtotal', 'payment_type',
+          'customer_id', 'batch_id', 'recorded_by', 'recorded_at', 'server_created_at',
+          'business_date', 'is_late_entry', 'voided', 'void_reason', 'voided_by', 'voided_at'
+        ])
+        && isText(d.item_name, 200)
+        && isText(d.item_key, 200)
+        && d.qty is number && d.qty > 0
+        && d.unit_price is number && d.unit_price >= 0
+        && d.subtotal is number && d.subtotal >= 0
+        && d.payment_type in ['cash', 'utang']
+        && ((d.payment_type == 'cash' && d.customer_id == null)
+          || (d.payment_type == 'utang' && isText(d.customer_id, 128)))
+        && (d.batch_id == null || isText(d.batch_id, 128))
+        && d.recorded_by == request.auth.uid
+        && d.recorded_at is timestamp
+        && d.server_created_at == request.time
+        && isDateString(d.business_date)
+        && d.is_late_entry is bool
+        && newVoidFieldsOk(d)
+        && closedDateOk(d, d.recorded_at);
+    }
+
+    match /sales/{id} {
+      allow read: if isMember();
+      allow create: if isMember() && isValidNewSale(request.resource.data);
+      allow update: if isMember() && isValidVoid(resource.data.recorded_by);
+    }
+
+    // ---------- payments ----------
+
+    function isValidNewPayment(d) {
+      return hasExactly(d, [
+          'customer_id', 'amount', 'received_by', 'received_at', 'server_created_at',
+          'business_date', 'is_late_entry', 'voided', 'void_reason', 'voided_by', 'voided_at'
+        ])
+        && isText(d.customer_id, 128)
+        && d.amount is number && d.amount > 0
+        && d.received_by == request.auth.uid
+        && d.received_at is timestamp
+        && d.server_created_at == request.time
+        && isDateString(d.business_date)
+        && d.is_late_entry is bool
+        && newVoidFieldsOk(d)
+        && closedDateOk(d, d.received_at);
+    }
+
+    match /payments/{id} {
+      allow read: if isMember();
+      allow create: if isMember() && isValidNewPayment(request.resource.data);
+      allow update: if isMember() && isValidVoid(resource.data.received_by);
+    }
+
+    // ---------- customers ----------
+
+    match /customers/{id} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && hasExactly(request.resource.data, ['name', 'name_key', 'created_by', 'created_at'])
+        && isText(request.resource.data.name, 100)
+        && isText(request.resource.data.name_key, 100)
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.created_at == request.time;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'name_key'])
+        && isText(request.resource.data.name, 100)
+        && isText(request.resource.data.name_key, 100);
+    }
+
+    // ---------- shifts ----------
+
+    match /shifts/{id} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && hasExactly(request.resource.data, ['uid', 'started_at', 'business_date'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.started_at is timestamp
+        && isDateString(request.resource.data.business_date);
+    }
+
+    // ---------- day_closures ----------
+
+    // "create" only applies when the doc does not exist yet; a second close is an update (denied).
+    match /day_closures/{businessDate} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && isDateString(businessDate)
+        && hasExactly(request.resource.data, ['closed_by', 'closed_at', 'totals'])
+        && request.resource.data.closed_by == request.auth.uid
+        && request.resource.data.closed_at == request.time
+        && request.resource.data.totals is map
+        && request.resource.data.totals.keys().hasAll([
+          'gross', 'cash_sales', 'utang_sales', 'utang_payments', 'expected_cash', 'per_member'
+        ]);
+    }
+
+    // ---------- audit_log ----------
+
+    match /audit_log/{id} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && hasExactly(request.resource.data, [
+          'action', 'target_collection', 'target_id', 'by', 'at', 'before', 'after', 'reason'
+        ])
+        && request.resource.data.action in ['void', 'late_entry', 'close_day']
+        && request.resource.data.target_collection in ['sales', 'payments', 'day_closures']
+        && isText(request.resource.data.target_id, 128)
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.at == request.time;
+    }
+  }
+}

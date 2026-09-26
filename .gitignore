@@ -10,7 +10,15 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dev-dist
 *.local
+.env*.local
+
+# Firebase emulator
+.firebase
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
 
 # Editor directories and files
 .vscode/*
