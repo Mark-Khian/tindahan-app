@@ -8,7 +8,6 @@ import { formatBusinessDate, formatTime } from '@/lib/businessDate'
 import { formatPeso } from '@/lib/money'
 import { canVoid } from '@/lib/permissions'
 import type { Payment, Sale } from '@/lib/types'
-import { cn } from '@/lib/utils'
 
 export function PendingBadge() {
   return (
@@ -20,29 +19,22 @@ export function PendingBadge() {
 }
 
 function RowShell({
-  voided,
   children,
   amount,
   onVoid,
-  voidInfo,
 }: {
-  voided: boolean
   children: ReactNode
   amount: string
   onVoid?: () => void
-  voidInfo: string | null
 }) {
   return (
     <li className="flex items-start gap-3 border-b py-3 last:border-b-0">
-      <div className={cn('min-w-0 flex-1', voided && 'opacity-50')}>
-        {children}
-        {voidInfo && <div className="mt-1 text-sm font-medium text-destructive">VOID: {voidInfo}</div>}
-      </div>
+      <div className="min-w-0 flex-1">{children}</div>
       <div className="flex shrink-0 flex-col items-end gap-1">
-        <span className={cn('text-lg font-bold', voided && 'line-through opacity-50')}>{amount}</span>
+        <span className="text-lg font-bold">{amount}</span>
         {onVoid && (
           <Button variant="ghost" size="sm" className="h-9 text-destructive" onClick={onVoid}>
-            Void
+            Delete
           </Button>
         )}
       </div>
@@ -65,16 +57,9 @@ export function SaleRow({
   const { memberNames, customersById } = useData()
   const when = sale.recorded_at?.toDate()
   return (
-    <RowShell
-      voided={sale.voided}
-      amount={formatPeso(sale.subtotal)}
-      onVoid={canVoid(sale, member) ? () => onVoid(sale) : undefined}
-      voidInfo={sale.voided ? sale.void_reason : null}
-    >
-      <div className={cn('text-lg font-semibold break-words', sale.voided && 'line-through')}>
-        {sale.item_name}
-      </div>
-      <div className={cn('text-muted-foreground', sale.voided && 'line-through')}>
+    <RowShell amount={formatPeso(sale.subtotal)} onVoid={canVoid(sale, member) ? () => onVoid(sale) : undefined}>
+      <div className="text-lg font-semibold break-words">{sale.item_name}</div>
+      <div className="text-muted-foreground">
         {sale.qty} × {formatPeso(sale.unit_price)}
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
@@ -106,14 +91,10 @@ export function PaymentRow({
   const when = payment.received_at?.toDate()
   return (
     <RowShell
-      voided={payment.voided}
       amount={`−${formatPeso(payment.amount)}`}
       onVoid={canVoid(payment, member) ? () => onVoid(payment) : undefined}
-      voidInfo={payment.voided ? payment.void_reason : null}
     >
-      <div className={cn('text-lg font-semibold text-emerald-700', payment.voided && 'line-through')}>
-        Bayad
-      </div>
+      <div className="text-lg font-semibold text-emerald-700">Bayad</div>
       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
         <span>
           {memberNames[payment.received_by] ?? '?'} ·{' '}

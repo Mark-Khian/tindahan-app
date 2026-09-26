@@ -61,12 +61,12 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled }: Props) {
           onValueChange={setName}
           options={suggestions}
           onPick={() => priceRef.current?.focus()}
-          placeholder="hal. Coke mismo"
+          placeholder="Paninda"
           enterKeyHint="next"
           disabled={disabled}
         />
       </div>
-      <div className="grid grid-cols-[1fr_1.2fr] gap-3">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="qty" className="text-base">Qty</Label>
           <div className="flex items-center gap-1">
@@ -83,8 +83,8 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled }: Props) {
             <Input
               id="qty"
               ref={qtyRef}
-              inputMode="decimal"
-              className="h-12 min-w-0 text-center text-lg"
+              inputMode="numeric"
+              className="h-12 w-12 shrink-0 px-1 text-center text-lg"
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               onFocus={(e) => e.target.select()}

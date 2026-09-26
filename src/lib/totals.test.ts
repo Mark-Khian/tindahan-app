@@ -75,4 +75,14 @@ describe('totalsDiffer', () => {
     expect(totalsDiffer(a, a)).toBe(false)
     expect(totalsDiffer(a, b)).toBe(true)
   })
+
+  it('detects an entry voided after the day was closed', () => {
+    const closed = computeDayTotals([sale('cash', 10, 'a'), sale('cash', 5, 'a')], [payment(3, 'a')], names)
+    const afterSaleVoid = computeDayTotals([sale('cash', 10, 'a'), sale('cash', 5, 'a', true)], [payment(3, 'a')], names)
+    const afterPaymentVoid = computeDayTotals([sale('cash', 10, 'a'), sale('cash', 5, 'a')], [payment(3, 'a', true)], names)
+    expect(totalsDiffer(closed, afterSaleVoid)).toBe(true)
+    expect(afterSaleVoid.expected_cash).toBe(13)
+    expect(totalsDiffer(closed, afterPaymentVoid)).toBe(true)
+    expect(afterPaymentVoid.expected_cash).toBe(15)
+  })
 })

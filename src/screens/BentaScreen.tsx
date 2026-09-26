@@ -12,6 +12,7 @@ import { useData } from '@/data/dataContext'
 import { useSalesForDate } from '@/data/queries'
 import { recordCashSale, startShift, type VoidTarget } from '@/data/writes'
 import { formatBusinessDate } from '@/lib/businessDate'
+import { activeEntries } from '@/lib/entries'
 import { formatPeso } from '@/lib/money'
 import { computeDayTotals } from '@/lib/totals'
 
@@ -23,7 +24,7 @@ export function BentaScreen() {
   const [voidTarget, setVoidTarget] = useState<VoidTarget | null>(null)
 
   const sorted = useMemo(
-    () => [...sales].sort((a, b) => b.recorded_at.toMillis() - a.recorded_at.toMillis()),
+    () => activeEntries(sales).sort((a, b) => b.recorded_at.toMillis() - a.recorded_at.toMillis()),
     [sales],
   )
   const totals = useMemo(() => computeDayTotals(sales, [], {}), [sales])
@@ -70,7 +71,7 @@ export function BentaScreen() {
       </Card>
 
       <section>
-        <h2 className="mb-1 text-lg font-bold">Mga benta ({sales.length})</h2>
+        <h2 className="mb-1 text-lg font-bold">Mga benta ({sorted.length})</h2>
         {ready && sorted.length === 0 && (
           <p className="py-6 text-center text-muted-foreground">Wala pang benta.</p>
         )}

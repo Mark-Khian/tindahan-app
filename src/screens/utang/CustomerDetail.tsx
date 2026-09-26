@@ -6,6 +6,7 @@ import { PaymentRow, PendingBadge, SaleRow } from '@/components/EntryRows'
 import { VoidDialog } from '@/components/VoidDialog'
 import { useData } from '@/data/dataContext'
 import type { VoidTarget } from '@/data/writes'
+import { activeEntries } from '@/lib/entries'
 import { formatPeso } from '@/lib/money'
 import type { Payment, Sale } from '@/lib/types'
 
@@ -26,10 +27,10 @@ export function CustomerDetail({ customerId, onBack, onMagUtang, onBayad }: Prop
 
   const history = useMemo<HistoryItem[]>(() => {
     const items: HistoryItem[] = [
-      ...utangSales
+      ...activeEntries(utangSales)
         .filter((s) => s.customer_id === customerId)
         .map((sale): HistoryItem => ({ kind: 'sale', at: sale.recorded_at.toMillis(), sale })),
-      ...payments
+      ...activeEntries(payments)
         .filter((p) => p.customer_id === customerId)
         .map((payment): HistoryItem => ({ kind: 'payment', at: payment.received_at.toMillis(), payment })),
     ]

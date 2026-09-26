@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, ArrowLeft, CheckCircle2, Lock } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, Lock } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,9 +24,10 @@ import { useNow } from '@/hooks/useNow'
 import { useSyncStatus } from '@/hooks/useSyncStatus'
 import { formatBusinessDate, formatDateTime } from '@/lib/businessDate'
 import { STALE_SYNC_MINUTES } from '@/lib/constants'
+import { deletedEntries } from '@/lib/entries'
 import { formatPeso } from '@/lib/money'
 import { computeDayTotals, totalsDiffer } from '@/lib/totals'
-import type { DayTotals, Member } from '@/lib/types'
+import type { DayTotals, Member, Payment, Sale } from '@/lib/types'
 
 function TotalsTable({ totals }: { totals: DayTotals }) {
   const rows: [string, number][] = [
@@ -103,6 +104,57 @@ function SyncWarnings({ staleMembers, devicePending }: { staleMembers: Member[];
   )
 }
 
+function DeletedEntriesSection({ sales, payments }: { sales: Sale[]; payments: Payment[] }) {
+  const { memberNames, customersById } = useData()
+  const [open, setOpen] = useState(false)
+  const deleted = useMemo(() => deletedEntries(sales, payments), [sales, payments])
+  if (deleted.length === 0) return null
+
+  return (
+    <Card className="py-2">
+      <CardContent className="px-4">
+        <button
+          type="button"
+          className="flex min-h-12 w-full items-center justify-between gap-3 text-left text-lg font-bold"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          Mga na-delete ({deleted.length})
+          <ChevronDown className={`size-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && (
+          <ul className="border-t">
+            {deleted.map((d) => {
+              const e = d.entry
+              const title =
+                d.kind === 'sale'
+                  ? d.entry.item_name
+                  : `Bayad – ${customersById.get(d.entry.customer_id)?.name ?? '?'}`
+              const amount = d.kind === 'sale' ? d.entry.subtotal : d.entry.amount
+              const recordedBy = d.kind === 'sale' ? d.entry.recorded_by : d.entry.received_by
+              return (
+                <li key={`${d.kind}-${e.id}`} className="flex flex-col gap-0.5 border-b py-3 last:border-b-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 font-semibold break-words">{title}</span>
+                    <span className="shrink-0 font-bold">{formatPeso(amount)}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Nag-record: {memberNames[recordedBy] ?? '?'} · Nag-delete: {memberNames[e.voided_by ?? ''] ?? '?'}
+                  </div>
+                  <div className="text-sm break-words">Dahilan: {e.void_reason ?? '—'}</div>
+                  {e.voided_at && (
+                    <div className="text-sm text-muted-foreground">{formatDateTime(e.voided_at.toDate())}</div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export function CloseDayScreen() {
   const { member } = useAuth()
   const { today, members, memberNames, closures, closuresById, payments } = useData()
@@ -171,9 +223,9 @@ export function CloseDayScreen() {
             {members.map((m) => {
               const stale = isStale(m, now)
               return (
-                <li key={m.id} className="flex items-center justify-between border-b py-2 last:border-b-0">
-                  <span className="font-medium">{m.name}</span>
-                  <span className={stale ? 'font-semibold text-amber-700' : 'text-muted-foreground'}>
+                <li key={m.id} className="flex items-center justify-between gap-3 border-b py-2 last:border-b-0">
+                  <span className="font-medium break-words">{m.name}</span>
+                  <span className={`text-right ${stale ? 'font-semibold text-amber-700' : 'text-muted-foreground'}`}>
                     {stale && '⚠️ '}
                     {m.last_sync_at ? formatDateTime(m.last_sync_at.toDate()) : 'Hindi pa nag-sync'}
                   </span>
@@ -265,16 +317,18 @@ export function CloseDayScreen() {
         </Card>
       )}
 
+      {member.role === 'admin' && <DeletedEntriesSection key={date} sales={sales} payments={dayPayments} />}
+
       <section>
         <h2 className="mb-1 text-lg font-bold">Mga nakaraang close</h2>
         {sortedClosures.length === 0 && <p className="py-4 text-center text-muted-foreground">Wala pa.</p>}
-        <ul>
+        <ul className="space-y-2">
           {sortedClosures.map((c) => (
             <li key={c.id}>
               <button
                 type="button"
                 onClick={() => setSelectedDate(c.id === today ? null : c.id)}
-                className={`flex w-full items-center gap-3 border-b px-1 py-3 text-left active:bg-accent ${c.id === date ? 'bg-accent' : ''}`}
+                className={`flex w-full items-center gap-3 rounded-xl border px-1 py-3 text-left active:bg-accent ${c.id === date ? 'bg-accent' : ''}`}
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold">{formatBusinessDate(c.id)}</div>

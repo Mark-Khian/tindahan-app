@@ -49,9 +49,15 @@ function VoidForm({ target, onClose }: { target: VoidTarget; onClose: () => void
       }}
     >
       <DialogHeader>
-        <DialogTitle>I-void ang entry?</DialogTitle>
+        <DialogTitle>I-delete ang entry?</DialogTitle>
         <DialogDescription className="text-base">{description}</DialogDescription>
       </DialogHeader>
+      {target.kind === 'sales' && (
+        <p className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">
+          Para lang sa maling entry (maling type, doble, o hindi natuloy). Kung nagbayad ng utang, gamitin ang{' '}
+          <b>Bayad</b> sa Utang page.
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         <Label htmlFor="void-reason" className="text-base">Dahilan (kailangan)</Label>
         <Input
@@ -68,7 +74,7 @@ function VoidForm({ target, onClose }: { target: VoidTarget; onClose: () => void
           Huwag na
         </Button>
         <Button type="submit" variant="destructive" className="h-12" disabled={!reason.trim()}>
-          I-void
+          Delete
         </Button>
       </DialogFooter>
     </form>
