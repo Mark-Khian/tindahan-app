@@ -35,6 +35,21 @@ export function computeBalances(
   return balances
 }
 
+/** customer_ids with at least one non-voided utang sale or non-voided payment. */
+export function customersWithActiveEntries(
+  sales: readonly BalanceSale[],
+  payments: readonly BalancePayment[],
+): Set<string> {
+  const ids = new Set<string>()
+  for (const s of sales) {
+    if (s.payment_type === 'utang' && !s.voided && s.customer_id) ids.add(s.customer_id)
+  }
+  for (const p of payments) {
+    if (!p.voided) ids.add(p.customer_id)
+  }
+  return ids
+}
+
 export function balanceFor(
   customerId: string,
   sales: readonly BalanceSale[],

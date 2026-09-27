@@ -6,6 +6,7 @@ import { PendingBadge } from '@/components/EntryRows'
 import { LateEntryBanner } from '@/components/LateEntryBanner'
 import { useEntryTarget } from '@/app/entryMode'
 import { useData } from '@/data/dataContext'
+import { customersWithActiveEntries } from '@/lib/balance'
 import { formatPeso } from '@/lib/money'
 import { normalizeKey } from '@/lib/normalize'
 import type { Customer } from '@/lib/types'
@@ -39,7 +40,7 @@ function CustomerRow({ item, onOpen }: { item: CustomerWithBalance; onOpen: () =
 }
 
 export function UtangScreen() {
-  const { customers, balances } = useData()
+  const { customers, balances, utangSales, payments } = useData()
   const { blocked } = useEntryTarget()
   const [search, setSearch] = useState('')
   const [showPaid, setShowPaid] = useState(false)
@@ -48,10 +49,12 @@ export function UtangScreen() {
   const [magUtang, setMagUtang] = useState<{ customerId: string | null } | null>(null)
   const [bayadCustomerId, setBayadCustomerId] = useState<string | null>(null)
 
+  const activeIds = useMemo(() => customersWithActiveEntries(utangSales, payments), [utangSales, payments])
+
   const { owing, paid } = useMemo(() => {
     const q = normalizeKey(search)
     const rows = customers
-      .filter((c) => !q || c.name_key.includes(q))
+      .filter((c) => activeIds.has(c.id) && (!q || c.name_key.includes(q)))
       .map((customer) => ({ customer, balance: balances.get(customer.id) ?? 0 }))
     return {
       owing: rows.filter((r) => r.balance > 0).sort((a, b) => b.balance - a.balance),
@@ -59,7 +62,7 @@ export function UtangScreen() {
         .filter((r) => r.balance <= 0)
         .sort((a, b) => a.customer.name.localeCompare(b.customer.name)),
     }
-  }, [customers, balances, search])
+  }, [customers, balances, activeIds, search])
 
   const dialogs = (
     <>
@@ -143,7 +146,7 @@ export function UtangScreen() {
             aria-expanded={showPaid}
           >
             {showPaid ? <ChevronDown className="size-5" /> : <ChevronRight className="size-5" />}
-            Bayad na ({paid.length})
+            Walang utang ({paid.length})
           </button>
           {showPaid && (
             <ul>

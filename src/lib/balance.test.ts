@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   balanceFor,
   computeBalances,
+  customersWithActiveEntries,
   validatePaymentAmount,
   type BalancePayment,
   type BalanceSale,
@@ -56,6 +57,37 @@ describe('computeBalances', () => {
 
   it('includes customers who only have payments', () => {
     expect(computeBalances([], [pay('ana', 5)]).get('ana')).toBe(-5)
+  })
+})
+
+describe('customersWithActiveEntries', () => {
+  it('hides a customer whose entries are all voided', () => {
+    const active = customersWithActiveEntries([utang('juan', 50, true)], [pay('juan', 10, true)])
+    expect(active.has('juan')).toBe(false)
+  })
+
+  it('shows a customer with an active utang sale only', () => {
+    expect(customersWithActiveEntries([utang('juan', 50)], []).has('juan')).toBe(true)
+  })
+
+  it('shows a fully paid customer with active records (₱0 balance)', () => {
+    const sales = [utang('juan', 50)]
+    const payments = [pay('juan', 50)]
+    expect(customersWithActiveEntries(sales, payments).has('juan')).toBe(true)
+    expect(computeBalances(sales, payments).get('juan')).toBe(0)
+  })
+
+  it('shows a customer with only an active payment', () => {
+    expect(customersWithActiveEntries([utang('juan', 5, true)], [pay('juan', 5)]).has('juan')).toBe(true)
+  })
+
+  it('hides a customer with no entries at all', () => {
+    expect(customersWithActiveEntries([utang('maria', 5)], [pay('maria', 1)]).has('juan')).toBe(false)
+    expect(customersWithActiveEntries([], []).size).toBe(0)
+  })
+
+  it('ignores cash sales', () => {
+    expect(customersWithActiveEntries([cash(100)], []).size).toBe(0)
   })
 })
 

@@ -129,7 +129,7 @@ export function AnalyticsScreen() {
                     <span className="min-w-0 flex-1 font-medium break-words">{t.name}</span>
                     <span className="shrink-0 text-right">
                       <span className={cn('block', topBy === 'qty' ? 'font-bold' : 'text-sm text-muted-foreground')}>
-                        Qty {qtyFormat.format(t.qty)}
+                        ×{qtyFormat.format(t.qty)}
                       </span>
                       <span
                         className={cn('block', topBy === 'amount' ? 'font-bold' : 'text-sm text-muted-foreground')}
