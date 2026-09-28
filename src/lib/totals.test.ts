@@ -55,6 +55,38 @@ describe('computeDayTotals', () => {
     expect(t.per_member.zzz.name).toBe('Unknown')
   })
 
+  it('keeps the Benta headline as cash sales, with utang separate', () => {
+    const headline = (sales: TotalsSale[]) => computeDayTotals(sales, [], names)
+
+    const cashOnly = headline([sale('cash', 500, 'a')])
+    expect(cashOnly.cash_sales).toBe(500)
+    expect(cashOnly.utang_sales).toBe(0)
+
+    const utangOnly = headline([sale('utang', 500, 'a')])
+    expect(utangOnly.cash_sales).toBe(0)
+    expect(utangOnly.utang_sales).toBe(500)
+
+    const mixed = headline([sale('cash', 450, 'a'), sale('utang', 592, 'a')])
+    expect(mixed.cash_sales).toBe(450)
+    expect(mixed.utang_sales).toBe(592)
+    expect(mixed.gross).toBe(1042)
+  })
+
+  it('excludes voided cash and utang from the Benta figures', () => {
+    const t = computeDayTotals(
+      [
+        sale('cash', 450, 'a'),
+        sale('cash', 100, 'a', true),
+        sale('utang', 592, 'a'),
+        sale('utang', 50, 'a', true),
+      ],
+      [],
+      names,
+    )
+    expect(t.cash_sales).toBe(450)
+    expect(t.utang_sales).toBe(592)
+  })
+
   it('returns zeros for an empty day', () => {
     const t = computeDayTotals([], [], names)
     expect(t).toEqual({

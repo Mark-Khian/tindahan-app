@@ -156,13 +156,29 @@ service cloud.firestore {
 
     // ---------- shifts ----------
 
+    // ended_at is null while the member is on duty. The only update is closing it once.
+    // Rules cannot query other docs, so a second open shift is blocked in the app, not here.
+    function isValidNewShift(d) {
+      return hasExactly(d, ['uid', 'started_at', 'ended_at', 'business_date'])
+        && d.uid == request.auth.uid
+        && d.started_at is timestamp
+        && d.ended_at == null
+        && isDateString(d.business_date);
+    }
+
+    function canEndShift() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return before.uid == request.auth.uid
+        && (!('ended_at' in before) || before.ended_at == null)
+        && after.diff(before).affectedKeys().hasOnly(['ended_at'])
+        && after.ended_at is timestamp;
+    }
+
     match /shifts/{id} {
       allow read: if isMember();
-      allow create: if isMember()
-        && hasExactly(request.resource.data, ['uid', 'started_at', 'business_date'])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.started_at is timestamp
-        && isDateString(request.resource.data.business_date);
+      allow create: if isMember() && isValidNewShift(request.resource.data);
+      allow update: if isMember() && canEndShift();
     }
 
     // ---------- day_closures ----------

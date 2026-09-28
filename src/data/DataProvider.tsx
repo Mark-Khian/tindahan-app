@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react'
 import { collection, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { computeBalances } from '@/lib/balance'
+import { openDutyShifts } from '@/lib/duty'
 import { getBusinessDate } from '@/lib/businessDate'
 import { useNow } from '@/hooks/useNow'
 import { DataContext, type DataValue } from './dataContext'
@@ -37,13 +38,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const memberNames: Record<string, string> = {}
     for (const m of members.data) memberNames[m.id] = m.name
 
-    const onDuty =
-      shifts.data.reduce<(typeof shifts.data)[number] | null>(
-        (latest, s) =>
-          !latest || s.started_at.toMillis() > latest.started_at.toMillis() ? s : latest,
-        null,
-      ) ?? null
-
     return {
       today,
       members: members.data,
@@ -53,7 +47,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       utangSales: utangSales.data,
       payments: payments.data,
       todaySales: todaySales.data,
-      onDuty,
+      openShifts: openDutyShifts(shifts.data),
       closures: closures.data,
       closuresById: new Map(closures.data.map((c) => [c.id, c])),
       balances: computeBalances(utangSales.data, payments.data),

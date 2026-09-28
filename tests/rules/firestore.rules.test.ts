@@ -321,16 +321,43 @@ describe('customers', () => {
 })
 
 describe('shifts', () => {
-  const shift = (uid: string) => ({ uid, started_at: Timestamp.now(), business_date: DATE })
-
-  it('members can start their own shift only', async () => {
-    await assertSucceeds(setDoc(doc(db('ana'), 'shifts/sh1'), shift('ana')))
-    await assertFails(setDoc(doc(db('ana'), 'shifts/sh2'), shift('ben')))
+  const shift = (uid: string, ended_at: Timestamp | null = null) => ({
+    uid,
+    started_at: Timestamp.now(),
+    ended_at,
+    business_date: DATE,
   })
 
-  it('shifts cannot be updated', async () => {
+  it('members can start their own open shift only', async () => {
+    await assertSucceeds(setDoc(doc(db('ana'), 'shifts/sh1'), shift('ana')))
+    await assertFails(setDoc(doc(db('ana'), 'shifts/sh2'), shift('ben')))
+    await assertFails(setDoc(doc(db('ana'), 'shifts/sh3'), shift('ana', Timestamp.now())))
+  })
+
+  it('a member can close their own open shift once', async () => {
+    await assertSucceeds(setDoc(doc(db('ana'), 'shifts/sh1'), shift('ana')))
+    await assertSucceeds(updateDoc(doc(db('ana'), 'shifts/sh1'), { ended_at: Timestamp.now() }))
+    await assertFails(updateDoc(doc(db('ana'), 'shifts/sh1'), { ended_at: Timestamp.now() }))
+  })
+
+  it('cannot close someone else’s shift or change other fields', async () => {
     await seed('shifts/sh1', shift('ana'))
+    await assertFails(updateDoc(doc(db('ben'), 'shifts/sh1'), { ended_at: Timestamp.now() }))
     await assertFails(updateDoc(doc(db('ana'), 'shifts/sh1'), { business_date: '2026-09-27' }))
+    await assertFails(
+      updateDoc(doc(db('ana'), 'shifts/sh1'), { ended_at: Timestamp.now(), uid: 'ben' }),
+    )
+  })
+
+  it('can close a shift written before ended_at existed', async () => {
+    await seed('shifts/legacy', { uid: 'ana', started_at: Timestamp.now(), business_date: DATE })
+    await assertSucceeds(updateDoc(doc(db('ana'), 'shifts/legacy'), { ended_at: Timestamp.now() }))
+  })
+
+  it('allows another shift after one is closed, so history is kept', async () => {
+    await assertSucceeds(setDoc(doc(db('ana'), 'shifts/sh1'), shift('ana')))
+    await assertSucceeds(updateDoc(doc(db('ana'), 'shifts/sh1'), { ended_at: Timestamp.now() }))
+    await assertSucceeds(setDoc(doc(db('ana'), 'shifts/sh2'), shift('ana')))
   })
 })
 

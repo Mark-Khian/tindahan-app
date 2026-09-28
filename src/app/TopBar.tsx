@@ -7,9 +7,19 @@ import { syncLabels, useSyncStatus } from '@/hooks/useSyncStatus'
 
 export function TopBar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { member } = useAuth()
-  const { onDuty, memberNames } = useData()
+  const { openShifts, memberNames } = useData()
   const { state } = useSyncStatus()
-  const meOnDuty = onDuty?.uid === member.id
+  const meOnDuty = openShifts.some((s) => s.uid === member.id)
+  const others = openShifts
+    .filter((s) => s.uid !== member.id)
+    .map((s) => memberNames[s.uid] ?? '?')
+  const status = meOnDuty
+    ? others.length > 0
+      ? `Ikaw ang on duty · ${others.join(', ')}`
+      : 'Ikaw ang on duty'
+    : others.length > 0
+      ? `Walang active duty mo · ${others.join(', ')}`
+      : 'Walang active duty mo'
 
   return (
     <header className="sticky top-0 z-20 flex items-center gap-2 border-b bg-background/95 px-4 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2 backdrop-blur">
@@ -17,15 +27,9 @@ export function TopBar({ onOpenSettings }: { onOpenSettings: () => void }) {
         <div className="truncate text-lg font-bold">{member.name}</div>
         <div className="flex items-center gap-1.5 text-sm">
           <span
-            className={`inline-block size-2.5 rounded-full ${onDuty ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
+            className={`inline-block size-2.5 rounded-full ${meOnDuty ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
           />
-          <span className="truncate text-muted-foreground">
-            {onDuty
-              ? meOnDuty
-                ? 'Ikaw ang on duty'
-                : `On duty: ${memberNames[onDuty.uid] ?? '?'}`
-              : 'Walang naka-on duty'}
-          </span>
+          <span className="truncate text-muted-foreground">{status}</span>
         </div>
       </div>
       <div className="flex items-center gap-1" title={syncLabels[state]}>

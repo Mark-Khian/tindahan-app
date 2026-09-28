@@ -61,6 +61,8 @@ export interface Shift {
   id: string
   uid: string
   started_at: Timestamp
+  /** Null while this member is on duty. Set when they tap Off Duty. */
+  ended_at: Timestamp | null
   business_date: string
 }
 

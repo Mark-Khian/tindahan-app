@@ -244,9 +244,21 @@ export function startShift(uid: string) {
   batch.set(doc(shiftsCol), {
     uid,
     started_at: Timestamp.fromDate(now),
+    ended_at: null,
     business_date: getBusinessDate(now),
   })
   commitTracked(batch, 'Simula ng bantay')
+}
+
+/** Closes the member's open shift documents. Completed shifts stay stored. */
+export function endShift(shiftIds: readonly string[]) {
+  if (shiftIds.length === 0) return
+  const batch = writeBatch(db)
+  const ended_at = Timestamp.fromDate(new Date())
+  for (const id of shiftIds) {
+    batch.update(doc(db, 'shifts', id), { ended_at })
+  }
+  commitTracked(batch, 'Tapos na ang duty')
 }
 
 export function closeDay(businessDate: string, totals: DayTotals, uid: string) {

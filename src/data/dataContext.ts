@@ -13,8 +13,8 @@ export interface DataValue {
   /** All payments ever (needed to compute balances). */
   payments: Payment[]
   todaySales: Sale[]
-  /** Latest shift for today, i.e. who is on duty. */
-  onDuty: Shift | null
+  /** Today's shifts that have not been ended. Each member controls their own. */
+  openShifts: Shift[]
   closures: DayClosure[]
   closuresById: Map<string, DayClosure>
   balances: Map<string, number>
