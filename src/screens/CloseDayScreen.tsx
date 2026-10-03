@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useRef, useState, useMemo, type PointerEvent } from 'react'
 import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, Lock } from 'lucide-react'
 import {
   AlertDialog,
@@ -19,7 +19,7 @@ import { useNav } from '@/app/navigation'
 import { useAuth } from '@/auth/authContext'
 import { useData } from '@/data/dataContext'
 import { useLastSaleDateBefore, useSalesForDate } from '@/data/queries'
-import { closeDay } from '@/data/writes'
+import { closeDay, deleteCloseDay } from '@/data/writes'
 import { useNow } from '@/hooks/useNow'
 import { useSyncStatus } from '@/hooks/useSyncStatus'
 import { formatBusinessDate, formatDateTime } from '@/lib/businessDate'
@@ -27,7 +27,110 @@ import { STALE_SYNC_MINUTES } from '@/lib/constants'
 import { deletedEntries } from '@/lib/entries'
 import { formatPeso } from '@/lib/money'
 import { computeDayTotals, totalsDiffer } from '@/lib/totals'
-import type { DayTotals, Member, Payment, Sale } from '@/lib/types'
+import type { DayClosure, DayTotals, Member, Payment, Sale } from '@/lib/types'
+
+const DELETE_REVEAL_PX = 88
+const SWIPE_THRESHOLD_PX = 64
+
+function ClosureHistoryRow({
+  closure,
+  selected,
+  canDelete,
+  closedBy,
+  onSelect,
+  onAskDelete,
+}: {
+  closure: DayClosure
+  selected: boolean
+  canDelete: boolean
+  closedBy: string
+  onSelect: () => void
+  onAskDelete: () => void
+}) {
+  const [revealed, setRevealed] = useState(false)
+  const [dragX, setDragX] = useState<number | null>(null)
+  const start = useRef<{ x: number; y: number; horizontal: boolean } | null>(null)
+  const ignoreClick = useRef(false)
+
+  const offset = dragX ?? (revealed ? -DELETE_REVEAL_PX : 0)
+
+  const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!canDelete) return
+    start.current = { x: event.clientX, y: event.clientY, horizontal: false }
+  }
+
+  const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const origin = start.current
+    if (!origin) return
+    const mx = event.clientX - origin.x
+    const my = event.clientY - origin.y
+    if (!origin.horizontal) {
+      if (Math.abs(mx) < 8 && Math.abs(my) < 8) return
+      if (Math.abs(my) >= Math.abs(mx) || mx > 0 && !revealed) {
+        start.current = null
+        return
+      }
+      origin.horizontal = true
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+    const base = revealed ? -DELETE_REVEAL_PX : 0
+    setDragX(Math.max(-DELETE_REVEAL_PX, Math.min(0, base + mx)))
+  }
+
+  const finishDrag = (event: PointerEvent<HTMLButtonElement>) => {
+    const origin = start.current
+    start.current = null
+    if (!origin?.horizontal) {
+      setDragX(null)
+      return
+    }
+    ignoreClick.current = true
+    const base = revealed ? -DELETE_REVEAL_PX : 0
+    const next = Math.max(-DELETE_REVEAL_PX, Math.min(0, base + (event.clientX - origin.x)))
+    setRevealed(next <= -SWIPE_THRESHOLD_PX)
+    setDragX(null)
+  }
+
+  return (
+    <li className="relative overflow-hidden rounded-xl">
+      {canDelete && (
+        <button
+          type="button"
+          className="absolute inset-y-0 right-0 w-[88px] bg-destructive font-bold text-white"
+          onClick={onAskDelete}
+        >
+          Delete
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          if (ignoreClick.current) {
+            ignoreClick.current = false
+            return
+          }
+          onSelect()
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={finishDrag}
+        onPointerCancel={() => {
+          start.current = null
+          setDragX(null)
+        }}
+        style={{ transform: `translateX(${offset}px)`, touchAction: 'pan-y' }}
+        className={`relative flex w-full items-center gap-3 rounded-xl border px-1 py-3 text-left active:bg-accent ${selected ? 'bg-accent' : 'bg-background'}`}
+      >
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold">{formatBusinessDate(closure.id)}</div>
+          <div className="text-sm text-muted-foreground">Ni {closedBy}</div>
+        </div>
+        {closure.pending && <PendingBadge />}
+        <span className="font-bold">{formatPeso(closure.totals.expected_cash)}</span>
+      </button>
+    </li>
+  )
+}
 
 function TotalsTable({ totals }: { totals: DayTotals }) {
   const rows: [string, number][] = [
@@ -163,6 +266,7 @@ export function CloseDayScreen() {
   const { goTo } = useNav()
   const now = useNow()
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<DayClosure | null>(null)
   const date = selectedDate ?? today
 
   const lastSaleDate = useLastSaleDateBefore(today)
@@ -324,22 +428,42 @@ export function CloseDayScreen() {
         {sortedClosures.length === 0 && <p className="py-4 text-center text-muted-foreground">Wala pa.</p>}
         <ul className="space-y-2">
           {sortedClosures.map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(c.id === today ? null : c.id)}
-                className={`flex w-full items-center gap-3 rounded-xl border px-1 py-3 text-left active:bg-accent ${c.id === date ? 'bg-accent' : ''}`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold">{formatBusinessDate(c.id)}</div>
-                  <div className="text-sm text-muted-foreground">Ni {memberNames[c.closed_by] ?? '?'}</div>
-                </div>
-                {c.pending && <PendingBadge />}
-                <span className="font-bold">{formatPeso(c.totals.expected_cash)}</span>
-              </button>
-            </li>
+            <ClosureHistoryRow
+              key={c.id}
+              closure={c}
+              selected={c.id === date}
+              canDelete={member.role === 'admin'}
+              closedBy={memberNames[c.closed_by] ?? '?'}
+              onSelect={() => setSelectedDate(c.id === today ? null : c.id)}
+              onAskDelete={() => setPendingDelete(c)}
+            />
           ))}
         </ul>
+        <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Close Day?</AlertDialogTitle>
+              <AlertDialogDescription className="text-base">
+                This will delete the Close Day record for{' '}
+                {pendingDelete ? formatBusinessDate(pendingDelete.id) : ''}. The date will be reopened
+                for normal entries. Sales and payments will not be deleted. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="h-12">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="h-12 bg-destructive text-white hover:bg-destructive/90"
+                onClick={() => {
+                  if (!pendingDelete) return
+                  deleteCloseDay(pendingDelete.id, pendingDelete.totals, member.id)
+                  setPendingDelete(null)
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </section>
     </div>
   )

@@ -91,4 +91,4 @@ export interface DayClosure {
   pending: boolean
 }
 
-export type AuditAction = 'void' | 'late_entry' | 'close_day'
+export type AuditAction = 'void' | 'late_entry' | 'close_day' | 'delete_close_day'

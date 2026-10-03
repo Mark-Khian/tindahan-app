@@ -23,10 +23,10 @@ export function addDays(businessDate: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
-export const DAY_NAMES = ['Linggo', 'Lunes', 'Martes', 'Miyerkules', 'Huwebes', 'Biyernes', 'Sabado']
-const MONTH_NAMES = ['Ene', 'Peb', 'Mar', 'Abr', 'May', 'Hun', 'Hul', 'Ago', 'Set', 'Okt', 'Nob', 'Dis']
+export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-/** Every date shown to the user goes through here, e.g. "Sabado, Set 26, 2026". */
+/** Every date shown to the user goes through here, e.g. "Sunday, Oct 4, 2026". */
 export function formatBusinessDate(businessDate: string): string {
   const date = parseDateString(businessDate)
   return `${DAY_NAMES[date.getUTCDay()]}, ${MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`
@@ -36,7 +36,7 @@ export function formatTime(date: Date): string {
   return formatInTimeZone(date, TIMEZONE, 'h:mm a')
 }
 
-/** Manila calendar date and time, e.g. "Sabado, Set 26, 2026, 10:02 PM". */
+/** Manila calendar date and time, e.g. "Saturday, Sep 26, 2026, 10:02 PM". */
 export function formatDateTime(date: Date): string {
   return `${formatBusinessDate(formatInTimeZone(date, TIMEZONE, 'yyyy-MM-dd'))}, ${formatTime(date)}`
 }

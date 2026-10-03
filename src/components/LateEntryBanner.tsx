@@ -27,10 +27,10 @@ export function LateEntryBanner() {
   if (blocked) {
     return (
       <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted p-3">
-        <div className="flex items-center gap-2">
-          <Lock className="size-5 shrink-0" />
+        <div className="flex min-w-0 items-start gap-2">
+          <Lock className="mt-0.5 size-5 shrink-0" />
           <div className="text-sm">
-            Naka-close na ang {formatBusinessDate(today)}. Para magdagdag, gumamit ng Late entry.
+            {formatBusinessDate(today)} is already closed. To add a sale, use Late entry.
           </div>
         </div>
         <Button className="h-11 shrink-0" onClick={() => startLateEntry(today)}>

@@ -11,7 +11,7 @@ import { db } from '@/lib/firebase'
 import { getBusinessDate } from '@/lib/businessDate'
 import { computeSubtotal } from '@/lib/money'
 import { normalizeKey } from '@/lib/normalize'
-import type { DayTotals, Payment, PaymentType, Sale } from '@/lib/types'
+import type { AuditAction, DayTotals, Payment, PaymentType, Sale } from '@/lib/types'
 import { commitTracked } from './syncStore'
 
 // No transactions anywhere: they fail offline. Only plain and batched writes.
@@ -38,7 +38,7 @@ type AuditTarget = 'sales' | 'payments' | 'day_closures'
 function addAudit(
   batch: WriteBatch,
   entry: {
-    action: 'void' | 'late_entry' | 'close_day'
+    action: AuditAction
     target_collection: AuditTarget
     target_id: string
     by: string
@@ -278,6 +278,22 @@ export function closeDay(businessDate: string, totals: DayTotals, uid: string) {
     reason: null,
   })
   commitTracked(batch, `Close Day ${businessDate}`)
+}
+
+/** Removes the close-day lock and snapshot. Sales and payments stay. Admin only at the rules. */
+export function deleteCloseDay(businessDate: string, totals: DayTotals, uid: string) {
+  const batch = writeBatch(db)
+  batch.delete(doc(db, 'day_closures', businessDate))
+  addAudit(batch, {
+    action: 'delete_close_day',
+    target_collection: 'day_closures',
+    target_id: businessDate,
+    by: uid,
+    before: { ...totals },
+    after: null,
+    reason: null,
+  })
+  commitTracked(batch, `Delete Close Day ${businessDate}`)
 }
 
 /** Not tracked as a pending write: it is bookkeeping, not store data. */

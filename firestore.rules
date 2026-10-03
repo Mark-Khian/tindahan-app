@@ -195,6 +195,7 @@ service cloud.firestore {
         && request.resource.data.totals.keys().hasAll([
           'gross', 'cash_sales', 'utang_sales', 'utang_payments', 'expected_cash', 'per_member'
         ]);
+      allow delete: if isAdmin();
     }
 
     // ---------- audit_log ----------
@@ -205,7 +206,8 @@ service cloud.firestore {
         && hasExactly(request.resource.data, [
           'action', 'target_collection', 'target_id', 'by', 'at', 'before', 'after', 'reason'
         ])
-        && request.resource.data.action in ['void', 'late_entry', 'close_day']
+        && (request.resource.data.action in ['void', 'late_entry', 'close_day']
+          || (request.resource.data.action == 'delete_close_day' && isAdmin()))
         && request.resource.data.target_collection in ['sales', 'payments', 'day_closures']
         && isText(request.resource.data.target_id, 128)
         && request.resource.data.by == request.auth.uid

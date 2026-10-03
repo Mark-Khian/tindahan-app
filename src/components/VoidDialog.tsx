@@ -49,21 +49,21 @@ function VoidForm({ target, onClose }: { target: VoidTarget; onClose: () => void
       }}
     >
       <DialogHeader>
-        <DialogTitle>I-delete ang entry?</DialogTitle>
+        <DialogTitle>Delete this sale?</DialogTitle>
         <DialogDescription className="text-base">{description}</DialogDescription>
       </DialogHeader>
       {target.kind === 'sales' && (
-        <p className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">
-          Para lang sa maling entry (maling type, doble, o hindi natuloy). Kung nagbayad ng utang, gamitin ang{' '}
-          <b>Bayad</b> sa Utang page.
+        <p className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+          Only for wrong entries (typo, duplicate, or cancelled). If a customer paid their credit, use Pay on the
+          Credit tab.
         </p>
       )}
       <div className="flex flex-col gap-2">
-        <Label htmlFor="void-reason" className="text-base">Dahilan (kailangan)</Label>
+        <Label htmlFor="void-reason" className="text-base">Reason (required)</Label>
         <Input
           id="void-reason"
           className="h-12 text-lg"
-          placeholder="hal. mali ang presyo"
+          placeholder="e.g. wrong price"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           autoFocus
@@ -71,7 +71,7 @@ function VoidForm({ target, onClose }: { target: VoidTarget; onClose: () => void
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" className="h-12" onClick={onClose}>
-          Huwag na
+          Cancel
         </Button>
         <Button type="submit" variant="destructive" className="h-12" disabled={!reason.trim()}>
           Delete

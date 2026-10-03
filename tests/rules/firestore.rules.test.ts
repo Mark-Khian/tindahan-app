@@ -375,6 +375,13 @@ describe('day_closures', () => {
     await assertFails(setDoc(doc(db('ana'), 'day_closures/today'), closure('ana')))
     await assertFails(setDoc(doc(db('ana'), `day_closures/${DATE}`), { ...closure('ana'), totals: {} }))
   })
+
+  it('only an admin can delete a close day', async () => {
+    await seedClosure(DATE, Timestamp.now())
+    await assertFails(deleteDoc(doc(db(null), `day_closures/${DATE}`)))
+    await assertFails(deleteDoc(doc(db('ana'), `day_closures/${DATE}`)))
+    await assertSucceeds(deleteDoc(doc(db('admin'), `day_closures/${DATE}`)))
+  })
 })
 
 describe('audit_log', () => {
@@ -393,6 +400,21 @@ describe('audit_log', () => {
     await assertSucceeds(setDoc(doc(db('ana'), 'audit_log/a1'), entry('ana')))
     await assertFails(setDoc(doc(db('ana'), 'audit_log/a2'), entry('ben')))
     await assertFails(setDoc(doc(db('ana'), 'audit_log/a3'), { ...entry('ana'), action: 'delete' }))
+  })
+
+  it('only an admin can record delete_close_day', async () => {
+    const deletion = (uid: string) => ({
+      action: 'delete_close_day',
+      target_collection: 'day_closures',
+      target_id: DATE,
+      by: uid,
+      at: serverTimestamp(),
+      before: totals,
+      after: null,
+      reason: null,
+    })
+    await assertFails(setDoc(doc(db('ana'), 'audit_log/d1'), deletion('ana')))
+    await assertSucceeds(setDoc(doc(db('admin'), 'audit_log/d1'), deletion('admin')))
   })
 
   it('entries cannot be updated', async () => {
@@ -416,7 +438,6 @@ describe('delete is denied everywhere', () => {
       'payments/p1',
       'customers/c1',
       'shifts/sh1',
-      `day_closures/${DATE}`,
       'audit_log/a1',
       'members/ana',
     ]) {
@@ -453,6 +474,24 @@ describe('batched writes used by the app', () => {
         reason: null,
       })
     }
+    await assertSucceeds(batch.commit())
+  })
+
+  it('admin deletes a close day and writes the audit entry in one batch', async () => {
+    await seedClosure(DATE, Timestamp.now())
+    const fs = db('admin')
+    const batch = writeBatch(fs)
+    batch.delete(doc(fs, `day_closures/${DATE}`))
+    batch.set(doc(fs, 'audit_log/del'), {
+      action: 'delete_close_day',
+      target_collection: 'day_closures',
+      target_id: DATE,
+      by: 'admin',
+      at: serverTimestamp(),
+      before: totals,
+      after: null,
+      reason: null,
+    })
     await assertSucceeds(batch.commit())
   })
 })

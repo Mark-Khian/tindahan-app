@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import type { Tab } from './navigation'
 
 const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
-  { id: 'benta', label: 'Benta', icon: ShoppingCart },
+  { id: 'benta', label: 'Sales', icon: ShoppingCart },
   { id: 'utang', label: 'Utang', icon: NotebookPen },
   { id: 'close', label: 'Close Day', icon: CalendarCheck },
   { id: 'analytics', label: 'Analytics', icon: ChartColumn },

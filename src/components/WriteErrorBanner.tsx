@@ -14,14 +14,14 @@ export function WriteErrorBanner() {
           className="flex items-start gap-2 rounded-lg border border-destructive bg-destructive/10 p-3 text-destructive"
         >
           <div className="flex-1 text-sm">
-            <div className="font-bold">Hindi na-save: {e.label}</div>
+            <div className="font-bold">Not saved: {e.label}</div>
             <div>{e.message}</div>
           </div>
           <button
             type="button"
             className="p-1"
             onClick={() => dismissWriteError(e.id)}
-            aria-label="Isara"
+            aria-label="Close"
           >
             <X className="size-5" />
           </button>

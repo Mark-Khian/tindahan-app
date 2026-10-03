@@ -61,7 +61,7 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled }: Props) {
           onValueChange={setName}
           options={suggestions}
           onPick={() => priceRef.current?.focus()}
-          placeholder="Paninda"
+          placeholder="e.g. Coke"
           enterKeyHint="next"
           disabled={disabled}
         />
@@ -76,7 +76,7 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled }: Props) {
               className="size-12 shrink-0"
               onClick={() => bumpQty(-1)}
               disabled={disabled}
-              aria-label="Bawasan"
+              aria-label="Decrease"
             >
               <Minus />
             </Button>
@@ -96,14 +96,14 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled }: Props) {
               className="size-12 shrink-0"
               onClick={() => bumpQty(1)}
               disabled={disabled}
-              aria-label="Dagdagan"
+              aria-label="Increase"
             >
               <Plus />
             </Button>
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="price" className="text-base">Presyo (₱)</Label>
+          <Label htmlFor="price" className="text-base">Price (₱)</Label>
           <Input
             id="price"
             ref={priceRef}

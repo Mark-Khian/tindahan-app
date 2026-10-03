@@ -45,37 +45,37 @@ describe('addDays', () => {
 })
 
 describe('formatBusinessDate', () => {
-  it('uses the full Filipino day name and abbreviated month', () => {
-    expect(formatBusinessDate('2026-09-26')).toBe('Sabado, Set 26, 2026')
+  it('uses the full English day name and abbreviated month', () => {
+    expect(formatBusinessDate('2026-10-04')).toBe('Sunday, Oct 4, 2026')
   })
 
   it('names all 7 days in full', () => {
-    expect(formatBusinessDate('2026-09-20')).toBe('Linggo, Set 20, 2026')
-    expect(formatBusinessDate('2026-09-21')).toBe('Lunes, Set 21, 2026')
-    expect(formatBusinessDate('2026-09-22')).toBe('Martes, Set 22, 2026')
-    expect(formatBusinessDate('2026-09-23')).toBe('Miyerkules, Set 23, 2026')
-    expect(formatBusinessDate('2026-09-24')).toBe('Huwebes, Set 24, 2026')
-    expect(formatBusinessDate('2026-09-25')).toBe('Biyernes, Set 25, 2026')
-    expect(formatBusinessDate('2026-09-26')).toBe('Sabado, Set 26, 2026')
+    expect(formatBusinessDate('2026-09-20')).toBe('Sunday, Sep 20, 2026')
+    expect(formatBusinessDate('2026-09-21')).toBe('Monday, Sep 21, 2026')
+    expect(formatBusinessDate('2026-09-22')).toBe('Tuesday, Sep 22, 2026')
+    expect(formatBusinessDate('2026-09-23')).toBe('Wednesday, Sep 23, 2026')
+    expect(formatBusinessDate('2026-09-24')).toBe('Thursday, Sep 24, 2026')
+    expect(formatBusinessDate('2026-09-25')).toBe('Friday, Sep 25, 2026')
+    expect(formatBusinessDate('2026-09-26')).toBe('Saturday, Sep 26, 2026')
   })
 
   it('handles month and year boundaries', () => {
-    expect(formatBusinessDate('2027-01-01')).toBe('Biyernes, Ene 1, 2027')
-    expect(formatBusinessDate('2028-02-29')).toBe('Martes, Peb 29, 2028')
+    expect(formatBusinessDate('2027-01-01')).toBe('Friday, Jan 1, 2027')
+    expect(formatBusinessDate('2028-02-29')).toBe('Tuesday, Feb 29, 2028')
   })
 })
 
 describe('formatDateTime', () => {
   it('shows the Manila calendar date with full day name and time', () => {
-    expect(formatDateTime(manila('2026-09-26T22:02:00'))).toBe('Sabado, Set 26, 2026, 10:02 PM')
+    expect(formatDateTime(manila('2026-09-26T22:02:00'))).toBe('Saturday, Sep 26, 2026, 10:02 PM')
   })
 
   it('uses the calendar date, not the business date, after midnight', () => {
-    expect(formatDateTime(manila('2026-09-27T01:30:00'))).toBe('Linggo, Set 27, 2026, 1:30 AM')
+    expect(formatDateTime(manila('2026-09-27T01:30:00'))).toBe('Sunday, Sep 27, 2026, 1:30 AM')
   })
 
   it('is independent of the device timezone', () => {
     // 2026-09-26T16:00Z = 2026-09-27 00:00 Manila
-    expect(formatDateTime(new Date('2026-09-26T16:00:00Z'))).toBe('Linggo, Set 27, 2026, 12:00 AM')
+    expect(formatDateTime(new Date('2026-09-26T16:00:00Z'))).toBe('Sunday, Sep 27, 2026, 12:00 AM')
   })
 })

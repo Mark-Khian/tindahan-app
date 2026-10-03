@@ -68,7 +68,7 @@ export function SaleRow({
           {when ? formatTime(when) : ''}
         </span>
         {sale.payment_type === 'utang' && showCustomer && (
-          <Badge variant="secondary">Utang: {customersById.get(sale.customer_id ?? '')?.name ?? '?'}</Badge>
+          <Badge variant="secondary">Credit: {customersById.get(sale.customer_id ?? '')?.name ?? '?'}</Badge>
         )}
         {sale.is_late_entry && <Badge variant="outline">late entry</Badge>}
         {sale.pending && <PendingBadge />}

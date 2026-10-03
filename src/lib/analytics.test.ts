@@ -233,18 +233,18 @@ describe('salesByHour', () => {
 
 describe('weekdayAverages', () => {
   const dates = getRangeDates('2026-09-26', '7d')
-  // 2026-09-14 (Lunes) .. 2026-09-26 (Sabado): 13 dates, Lunes–Sabado occur twice, Linggo once.
+  // 2026-09-14 (Monday) .. 2026-09-26 (Saturday): 13 dates, Monday–Saturday occur twice, Sunday once.
   const twoWeeks = [...getRangeDates('2026-09-19', '7d').slice(1), ...getRangeDates('2026-09-26', '7d')]
 
-  it('uses full Filipino day names starting with Linggo', () => {
+  it('uses full English day names starting with Sunday', () => {
     expect(weekdayAverages([], dates).map((d) => d.name)).toEqual([
-      'Linggo',
-      'Lunes',
-      'Martes',
-      'Miyerkules',
-      'Huwebes',
-      'Biyernes',
-      'Sabado',
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
     ])
   })
 
@@ -252,15 +252,15 @@ describe('weekdayAverages', () => {
     expect(twoWeeks).toHaveLength(13)
     const result = weekdayAverages(
       [
-        sale({ at: '2026-09-14T10:00:00', subtotal: 100 }), // Lunes
-        sale({ at: '2026-09-21T10:00:00', subtotal: 50 }), // Lunes
-        sale({ at: '2026-09-20T10:00:00', subtotal: 30 }), // Linggo
+        sale({ at: '2026-09-14T10:00:00', subtotal: 100 }), // Monday
+        sale({ at: '2026-09-21T10:00:00', subtotal: 50 }), // Monday
+        sale({ at: '2026-09-20T10:00:00', subtotal: 30 }), // Sunday
       ],
       twoWeeks,
     )
-    expect(result[1]).toEqual({ weekday: 1, name: 'Lunes', occurrences: 2, average: 75 })
-    expect(result[0]).toEqual({ weekday: 0, name: 'Linggo', occurrences: 1, average: 30 })
-    expect(result[2]).toMatchObject({ name: 'Martes', occurrences: 2, average: 0 })
+    expect(result[1]).toEqual({ weekday: 1, name: 'Monday', occurrences: 2, average: 75 })
+    expect(result[0]).toEqual({ weekday: 0, name: 'Sunday', occurrences: 1, average: 30 })
+    expect(result[2]).toMatchObject({ name: 'Tuesday', occurrences: 2, average: 0 })
   })
 
   it('uses the business date, so a 2AM sale counts for the previous day', () => {
