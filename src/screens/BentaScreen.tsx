@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { UserCheck, UserX } from 'lucide-react'
 import {
   AlertDialog,
@@ -18,9 +18,11 @@ import { VoidDialog } from '@/components/VoidDialog'
 import { useEntryTarget } from '@/app/entryMode'
 import { useAuth } from '@/auth/authContext'
 import { useData } from '@/data/dataContext'
+import { useDutyGate } from '@/hooks/useDutyGate'
 import { useSyncStatus } from '@/hooks/useSyncStatus'
 import { useSalesForDate } from '@/data/queries'
 import { endShift, recordCashSale, startShift, type VoidTarget } from '@/data/writes'
+import { clearPendingOnDuty, releaseDutyStartLock, requestStartDuty } from '@/lib/dutyGate'
 import { formatBusinessDate } from '@/lib/businessDate'
 import { activeEntries } from '@/lib/entries'
 import { formatPeso } from '@/lib/money'
@@ -36,7 +38,8 @@ export function BentaScreen() {
   const [dutyNote, setDutyNote] = useState<string | null>(null)
   const [offDutyOpen, setOffDutyOpen] = useState(false)
   const [onDutyOpen, setOnDutyOpen] = useState(false)
-  const startLock = useRef(false)
+  const [saleFormKey, setSaleFormKey] = useState(0)
+  const { guardSave, dutyDialog } = useDutyGate()
 
   const sorted = useMemo(
     () => activeEntries(sales).sort((a, b) => b.recorded_at.toMillis() - a.recorded_at.toMillis()),
@@ -59,17 +62,19 @@ export function BentaScreen() {
   }, [openShifts, member.id, memberNames])
 
   useEffect(() => {
-    if (meOnDuty || errors.some((e) => e.label === 'Simula ng bantay')) startLock.current = false
-  }, [meOnDuty, errors])
+    const failed = errors.some((e) => e.label === 'Simula ng bantay')
+    if (meOnDuty || failed) releaseDutyStartLock()
+    if (failed) clearPendingOnDuty(member.id)
+  }, [meOnDuty, errors, member.id])
 
   const goOnDuty = () => {
-    if (meOnDuty || startLock.current) return
-    startLock.current = true
+    if (meOnDuty) return
     setDutyNote(null)
-    startShift(member.id)
+    requestStartDuty(member.id, startShift)
   }
 
   const goOffDuty = () => {
+    clearPendingOnDuty(member.id)
     if (myOpenShifts.length === 0) {
       setDutyNote('You are not on duty.')
       return
@@ -81,8 +86,10 @@ export function BentaScreen() {
   const onSave = (item: Parameters<typeof recordCashSale>[0]) => {
     const target = resolveTarget()
     if (!target) return false
-    recordCashSale(item, member.id, target)
-    return true
+    const outcome = guardSave(() => recordCashSale(item, member.id, target), () =>
+      setSaleFormKey((key) => key + 1),
+    )
+    return outcome === 'saved'
   }
 
   return (
@@ -97,6 +104,7 @@ export function BentaScreen() {
         </Button>
       )}
       {dutyNote && <p className="text-sm text-muted-foreground">{dutyNote}</p>}
+      {dutyDialog}
       <AlertDialog open={onDutyOpen} onOpenChange={setOnDutyOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -130,7 +138,13 @@ export function BentaScreen() {
 
       <Card className={isLate ? 'border-2 border-amber-500' : undefined}>
         <CardContent>
-          <ItemEntryForm onSave={onSave} disabled={blocked} saveLabel={isLate ? 'Save (late)' : 'Save'} />
+          <ItemEntryForm
+            key={saleFormKey}
+            autoFocusItem={saleFormKey > 0}
+            onSave={onSave}
+            disabled={blocked}
+            saveLabel={isLate ? 'Save (late)' : 'Save'}
+          />
         </CardContent>
       </Card>
 

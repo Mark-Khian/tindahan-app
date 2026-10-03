@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { AutocompleteInput } from '@/components/AutocompleteInput'
 import { ItemEntryForm } from '@/components/ItemEntryForm'
 import { useEntryTarget } from '@/app/entryMode'
+import { useDutyGate } from '@/hooks/useDutyGate'
 import { useAuth } from '@/auth/authContext'
 import { useData } from '@/data/dataContext'
 import { recordUtang, type CustomerChoice, type ItemInput } from '@/data/writes'
@@ -36,6 +37,7 @@ function MagUtangForm({ initialCustomerId, onClose, onSaved }: Omit<Props, 'open
   const { member } = useAuth()
   const { customers, customersById, balances } = useData()
   const { isLate, blocked, entryDate, resolveTarget } = useEntryTarget()
+  const { guardSave, dutyDialog } = useDutyGate()
   const [customerId, setCustomerId] = useState<string | null>(initialCustomerId)
   const [customerText, setCustomerText] = useState('')
   const [items, setItems] = useState<ItemInput[]>([])
@@ -64,7 +66,7 @@ function MagUtangForm({ initialCustomerId, onClose, onSaved }: Omit<Props, 'open
     if (items.length === 0) return setError('Magdagdag ng kahit isang item.')
     const target = resolveTarget()
     if (!target) return setError('Naka-close na ang araw. Gumamit ng Late entry.')
-    onSaved(recordUtang(choice, items, member.id, target))
+    guardSave(() => onSaved(recordUtang(choice, items, member.id, target)))
   }
 
   return (
@@ -160,6 +162,7 @@ function MagUtangForm({ initialCustomerId, onClose, onSaved }: Omit<Props, 'open
       </div>
 
       {error && <p className="text-destructive">{error}</p>}
+      {dutyDialog}
 
       <div className="flex gap-2">
         <Button variant="outline" className="h-14 flex-1 text-base" onClick={onClose}>

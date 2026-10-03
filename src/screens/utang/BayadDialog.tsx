@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useEntryTarget } from '@/app/entryMode'
+import { useDutyGate } from '@/hooks/useDutyGate'
 import { useAuth } from '@/auth/authContext'
 import { useData } from '@/data/dataContext'
 import { recordPayment } from '@/data/writes'
@@ -32,6 +33,7 @@ function BayadForm({ customerId, onClose }: { customerId: string; onClose: () =>
   const { member } = useAuth()
   const { customersById, balances } = useData()
   const { isLate, blocked, entryDate, resolveTarget } = useEntryTarget()
+  const { guardSave, dutyDialog } = useDutyGate()
   const [amount, setAmount] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -45,8 +47,11 @@ function BayadForm({ customerId, onClose }: { customerId: string; onClose: () =>
     if (check === 'exceeds_balance') return setError(`Hindi puwedeng lumampas sa utang (${formatPeso(balance)}).`)
     const target = resolveTarget()
     if (!target) return setError('Naka-close na ang araw. Gumamit ng Late entry.')
-    recordPayment(customerId, value!, member.id, target)
-    onClose()
+    const amountToSave = value!
+    guardSave(() => {
+      recordPayment(customerId, amountToSave, member.id, target)
+      onClose()
+    })
   }
 
   return (
@@ -101,6 +106,7 @@ function BayadForm({ customerId, onClose }: { customerId: string; onClose: () =>
         />
       </div>
       {error && <p className="text-destructive">{error}</p>}
+      {dutyDialog}
       <DialogFooter>
         <Button type="button" variant="outline" className="h-12" onClick={onClose}>
           Kanselahin

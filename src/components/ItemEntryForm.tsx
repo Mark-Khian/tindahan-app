@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,9 +13,11 @@ interface Props {
   onSave: (item: ItemInput) => boolean | void
   saveLabel?: string
   disabled?: boolean
+  /** Focus Item on mount. Used after a save that had to wait for the duty dialog. */
+  autoFocusItem?: boolean
 }
 
-export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled }: Props) {
+export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled, autoFocusItem }: Props) {
   const suggestions = useItemSuggestions()
   const [name, setName] = useState('')
   const [qty, setQty] = useState('1')
@@ -23,6 +25,10 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled }: Props) {
   const itemRef = useRef<HTMLInputElement>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
   const priceRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (autoFocusItem) itemRef.current?.focus()
+  }, [autoFocusItem])
 
   const qtyValue = parseNumber(qty)
   const priceValue = parseNumber(price)
