@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { getBusinessDate } from '@/lib/businessDate'
+import { buildDeleteCloseDay, type ClosingSnapshot } from '@/lib/deleteCloseDay'
 import { computeSubtotal } from '@/lib/money'
 import { normalizeKey } from '@/lib/normalize'
 import type { AuditAction, DayTotals, Payment, PaymentType, Sale } from '@/lib/types'
@@ -297,19 +298,12 @@ export function closeDay(businessDate: string, totals: DayTotals, uid: string) {
 }
 
 /** Removes the close-day lock and snapshot. Sales and payments stay. Admin only at the rules. */
-export function deleteCloseDay(businessDate: string, totals: DayTotals, uid: string) {
+export function deleteCloseDay(closure: ClosingSnapshot, uid: string) {
+  const plan = buildDeleteCloseDay(closure, uid)
   const batch = writeBatch(db)
-  batch.delete(doc(db, 'day_closures', businessDate))
-  addAudit(batch, {
-    action: 'delete_close_day',
-    target_collection: 'day_closures',
-    target_id: businessDate,
-    by: uid,
-    before: { ...totals },
-    after: null,
-    reason: null,
-  })
-  commitTracked(batch, `Delete Close Day ${businessDate}`)
+  batch.delete(doc(db, 'day_closures', plan.closureId))
+  addAudit(batch, plan.audit)
+  commitTracked(batch, `Delete Close Day ${plan.closureId}`)
 }
 
 /** Not tracked as a pending write: it is bookkeeping, not store data. */

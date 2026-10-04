@@ -88,8 +88,8 @@ async function seedSale(id: string, uid: string, overrides: Record<string, unkno
   await seed(`sales/${id}`, { ...sale(uid, overrides), server_created_at: Timestamp.now() })
 }
 
-async function seedPayment(id: string, uid: string) {
-  await seed(`payments/${id}`, { ...payment(uid), server_created_at: Timestamp.now() })
+async function seedPayment(id: string, uid: string, overrides: Record<string, unknown> = {}) {
+  await seed(`payments/${id}`, { ...payment(uid, overrides), server_created_at: Timestamp.now() })
 }
 
 async function seedClosure(date: string, closedAt: Timestamp) {
@@ -486,7 +486,9 @@ describe('audit_log', () => {
 })
 
 describe('delete is denied everywhere', () => {
-  it('even for admins', async () => {
+  // The only entry-delete exception is a voided sale or payment removed in the same
+  // batch as audit_log/purge_<id>. That case is covered below. These stay denied.
+  it('even for admins, including non-voided sales and payments', async () => {
     await seedSale('s1', 'ana')
     await seedPayment('p1', 'ana')
     await seed('customers/c1', { name: 'J', name_key: 'j', created_by: 'ana', created_at: Timestamp.now() })
@@ -505,6 +507,78 @@ describe('delete is denied everywhere', () => {
       await assertFails(deleteDoc(doc(db('admin'), path)))
       await assertFails(deleteDoc(doc(db('ana'), path)))
     }
+  })
+})
+
+const voided = {
+  voided: true,
+  void_reason: 'training',
+  voided_by: 'ana',
+  voided_at: Timestamp.now(),
+}
+
+function purgeAudit(uid: string, collection: 'sales' | 'payments', id: string, before: Record<string, unknown>) {
+  return {
+    action: 'purge_entry',
+    target_collection: collection,
+    target_id: id,
+    by: uid,
+    at: serverTimestamp(),
+    before,
+    after: null,
+    reason: 'Permanent delete of a voided entry',
+  }
+}
+
+describe('purge a voided entry', () => {
+  it('lets an admin delete a voided sale with the matching audit doc in the same batch', async () => {
+    await seedSale('s1', 'ana', voided)
+    const before = { ...sale('ana', voided), server_created_at: Timestamp.now() }
+    const fs = db('admin')
+    const batch = writeBatch(fs)
+    batch.set(doc(fs, 'audit_log/purge_s1'), purgeAudit('admin', 'sales', 's1', before))
+    batch.delete(doc(fs, 'sales/s1'))
+    await assertSucceeds(batch.commit())
+  })
+
+  it('lets an admin delete a voided payment with the matching audit doc in the same batch', async () => {
+    await seedPayment('p1', 'ana', voided)
+    const before = { ...payment('ana', voided), server_created_at: Timestamp.now() }
+    const fs = db('admin')
+    const batch = writeBatch(fs)
+    batch.set(doc(fs, 'audit_log/purge_p1'), purgeAudit('admin', 'payments', 'p1', before))
+    batch.delete(doc(fs, 'payments/p1'))
+    await assertSucceeds(batch.commit())
+  })
+
+  it('denies an admin delete of a voided sale when the audit entry is missing', async () => {
+    await seedSale('s1', 'ana', voided)
+    await assertFails(deleteDoc(doc(db('admin'), 'sales/s1')))
+  })
+
+  it('denies an admin delete of a non-voided sale even with an audit entry', async () => {
+    await seedSale('s1', 'ana')
+    const fs = db('admin')
+    const batch = writeBatch(fs)
+    batch.set(doc(fs, 'audit_log/purge_s1'), purgeAudit('admin', 'sales', 's1', sale('ana')))
+    batch.delete(doc(fs, 'sales/s1'))
+    await assertFails(batch.commit())
+  })
+
+  it('denies a non-admin delete of a voided sale even with an audit entry', async () => {
+    await seedSale('s1', 'ana', voided)
+    const fs = db('ana')
+    const batch = writeBatch(fs)
+    batch.set(doc(fs, 'audit_log/purge_s1'), purgeAudit('ana', 'sales', 's1', sale('ana', voided)))
+    batch.delete(doc(fs, 'sales/s1'))
+    await assertFails(batch.commit())
+  })
+
+  it('denies a purge_entry audit with a mismatched doc id or from a non-admin', async () => {
+    const body = purgeAudit('admin', 'sales', 's1', { voided: true })
+    await assertFails(setDoc(doc(db('admin'), 'audit_log/not_purge_s1'), body))
+    await assertFails(setDoc(doc(db('admin'), 'audit_log/purge_other'), body))
+    await assertFails(setDoc(doc(db('ana'), 'audit_log/purge_s1'), purgeAudit('ana', 'sales', 's1', { voided: true })))
   })
 })
 

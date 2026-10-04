@@ -2,7 +2,8 @@ rules_version = '2';
 
 // Tindahan App security rules.
 // - Every read requires a members/{uid} doc.
-// - Delete is never allowed (no rule grants it).
+// - Delete is denied, except an admin may delete a voided sale or payment when
+//   the same batch creates audit_log/purge_<id>. Every other delete stays denied.
 // - Corrections are voids: only the void fields may change, false -> true, once.
 
 service cloud.firestore {
@@ -56,6 +57,14 @@ service cloud.firestore {
         && data.void_reason == null
         && data.voided_by == null
         && data.voided_at == null;
+    }
+
+    // Only exception to "no deletes" on entries: the doc is already voided, the caller
+    // is an admin, and audit_log/purge_<id> exists after this write.
+    function canPurgeVoidedEntry(id) {
+      return isAdmin()
+        && resource.data.voided == true
+        && existsAfter(/databases/$(database)/documents/audit_log/$('purge_' + id));
     }
 
     function isValidVoid(owner) {
@@ -112,6 +121,7 @@ service cloud.firestore {
       allow read: if isMember();
       allow create: if isMember() && isValidNewSale(request.resource.data);
       allow update: if isMember() && isValidVoid(resource.data.recorded_by);
+      allow delete: if canPurgeVoidedEntry(id);
     }
 
     // ---------- payments ----------
@@ -136,6 +146,7 @@ service cloud.firestore {
       allow read: if isMember();
       allow create: if isMember() && isValidNewPayment(request.resource.data);
       allow update: if isMember() && isValidVoid(resource.data.received_by);
+      allow delete: if canPurgeVoidedEntry(id);
     }
 
     // ---------- customers ----------
@@ -241,7 +252,11 @@ service cloud.firestore {
             && request.resource.data.target_collection == 'day_closures')
           || (request.resource.data.action == 'archive_customer'
             && isAdmin()
-            && request.resource.data.target_collection == 'customers'))
+            && request.resource.data.target_collection == 'customers')
+          || (request.resource.data.action == 'purge_entry'
+            && isAdmin()
+            && request.resource.data.target_collection in ['sales', 'payments']
+            && id == 'purge_' + request.resource.data.target_id))
         && isText(request.resource.data.target_id, 128)
         && request.resource.data.by == request.auth.uid
         && request.resource.data.at == request.time;
