@@ -33,7 +33,7 @@ const customersCol = collection(db, 'customers')
 const shiftsCol = collection(db, 'shifts')
 const auditCol = collection(db, 'audit_log')
 
-type AuditTarget = 'sales' | 'payments' | 'day_closures'
+type AuditTarget = 'sales' | 'payments' | 'day_closures' | 'customers'
 
 function addAudit(
   batch: WriteBatch,
@@ -135,14 +135,7 @@ function setNewCustomer(batch: WriteBatch, name: string, uid: string): string {
   return ref.id
 }
 
-export function addCustomer(name: string, uid: string): string {
-  const batch = writeBatch(db)
-  const id = setNewCustomer(batch, name, uid)
-  commitTracked(batch, `Bagong customer: ${name.trim()}`)
-  return id
-}
-
-export type CustomerChoice = { id: string } | { newName: string }
+export type CustomerChoice = { id: string; unarchive?: boolean } | { newName: string }
 
 /** Saves all items as utang sales sharing one batch_id. Returns the customer id. */
 export function recordUtang(
@@ -153,6 +146,9 @@ export function recordUtang(
 ): string {
   const batch = writeBatch(db)
   const customerId = 'id' in customer ? customer.id : setNewCustomer(batch, customer.newName, uid)
+  if ('id' in customer && customer.unarchive) {
+    batch.update(doc(db, 'customers', customerId), { archived: false })
+  }
   const batchId = doc(salesCol).id
   const now = new Date()
   for (const item of items) {
@@ -180,6 +176,26 @@ export function recordUtang(
   }
   commitTracked(batch, `Utang (${items.length} item)`)
   return customerId
+}
+
+/** Hides a paid-up customer. Sales and payments stay. */
+export function archiveCustomer(customerId: string, uid: string) {
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'customers', customerId), {
+    archived: true,
+    archived_by: uid,
+    archived_at: serverTimestamp(),
+  })
+  addAudit(batch, {
+    action: 'archive_customer',
+    target_collection: 'customers',
+    target_id: customerId,
+    by: uid,
+    before: { archived: false },
+    after: { archived: true },
+    reason: null,
+  })
+  commitTracked(batch, 'Archive customer')
 }
 
 export function recordPayment(customerId: string, amount: number, uid: string, target: EntryTarget) {

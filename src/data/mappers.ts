@@ -22,8 +22,20 @@ export const toSale = (d: Snap): Sale =>
 export const toPayment = (d: Snap): Payment =>
   ({ ...read(d), id: d.id, pending: d.metadata.hasPendingWrites }) as Payment
 
-export const toCustomer = (d: Snap): Customer =>
-  ({ ...read(d), id: d.id, pending: d.metadata.hasPendingWrites }) as Customer
+export const toCustomer = (d: Snap): Customer => {
+  const data = read(d)
+  return {
+    id: d.id,
+    name: data.name,
+    name_key: data.name_key,
+    created_by: data.created_by,
+    created_at: data.created_at,
+    pending: d.metadata.hasPendingWrites,
+    archived: data.archived === true,
+    archived_by: data.archived_by ?? null,
+    archived_at: data.archived_at ?? null,
+  }
+}
 
 export const toShift = (d: Snap): Shift => {
   const data = read(d)

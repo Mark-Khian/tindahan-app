@@ -43,10 +43,10 @@ function BayadForm({ customerId, onClose }: { customerId: string; onClose: () =>
 
   const save = () => {
     const check = validatePaymentAmount(value ?? 0, balance)
-    if (check === 'not_positive') return setError('Maglagay ng halagang higit sa ₱0.')
-    if (check === 'exceeds_balance') return setError(`Hindi puwedeng lumampas sa utang (${formatPeso(balance)}).`)
+    if (check === 'not_positive') return setError('Enter an amount more than ₱0.')
+    if (check === 'exceeds_balance') return setError(`Can't be more than the balance (${formatPeso(balance)}).`)
     const target = resolveTarget()
-    if (!target) return setError('Naka-close na ang araw. Gumamit ng Late entry.')
+    if (!target) return setError('This day is already closed. Use Late entry.')
     const amountToSave = value!
     guardSave(() => {
       recordPayment(customerId, amountToSave, member.id, target)
@@ -63,19 +63,19 @@ function BayadForm({ customerId, onClose }: { customerId: string; onClose: () =>
       }}
     >
       <DialogHeader>
-        <DialogTitle>Bayad ni {customer?.name ?? '?'}</DialogTitle>
+        <DialogTitle>Pay from {customer?.name ?? '?'}</DialogTitle>
         <DialogDescription className="text-base">
-          Utang ngayon: <span className="text-xl font-bold text-foreground">{formatPeso(balance)}</span>
+          Balance now: <span className="text-xl font-bold text-foreground">{formatPeso(balance)}</span>
         </DialogDescription>
       </DialogHeader>
       {isLate && (
-        <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-900">
-          LATE ENTRY para sa {formatBusinessDate(entryDate)}
+        <p className="rounded-md border border-amber-400 bg-amber-50 p-2 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+          LATE ENTRY for {formatBusinessDate(entryDate)}
         </p>
       )}
       {blocked && (
         <p className="rounded-md bg-muted p-2 text-sm">
-          Naka-close na ang araw. Pindutin ang "Late entry" sa Utang screen.
+          This day is already closed. Tap Late entry on the Credit screen.
         </p>
       )}
       <Button
@@ -88,10 +88,10 @@ function BayadForm({ customerId, onClose }: { customerId: string; onClose: () =>
         }}
         disabled={balance <= 0}
       >
-        Bayaran lahat ({formatPeso(balance)})
+        Pay full balance ({formatPeso(balance)})
       </Button>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="bayad-amount" className="text-base">Halaga (₱)</Label>
+        <Label htmlFor="bayad-amount" className="text-base">Amount (₱)</Label>
         <Input
           id="bayad-amount"
           inputMode="decimal"
@@ -109,10 +109,10 @@ function BayadForm({ customerId, onClose }: { customerId: string; onClose: () =>
       {dutyDialog}
       <DialogFooter>
         <Button type="button" variant="outline" className="h-12" onClick={onClose}>
-          Kanselahin
+          Cancel
         </Button>
         <Button type="submit" className="h-12" disabled={blocked}>
-          I-save ang bayad
+          Save payment
         </Button>
       </DialogFooter>
     </form>

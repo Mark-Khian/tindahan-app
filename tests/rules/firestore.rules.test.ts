@@ -318,6 +318,52 @@ describe('customers', () => {
     await assertSucceeds(updateDoc(doc(db('admin'), 'customers/c1'), { name: 'Juan', name_key: 'juan' }))
     await assertFails(updateDoc(doc(db('admin'), 'customers/c1'), { created_by: 'admin' }))
   })
+
+  const archivePatch = (uid: string) => ({
+    archived: true,
+    archived_by: uid,
+    archived_at: serverTimestamp(),
+  })
+
+  it('an admin can archive a customer that has no archived field', async () => {
+    await seed('customers/c1', { ...customer('ana'), created_at: Timestamp.now() })
+    await assertSucceeds(updateDoc(doc(db('admin'), 'customers/c1'), archivePatch('admin')))
+  })
+
+  it('a non-admin cannot archive', async () => {
+    await seed('customers/c1', { ...customer('ana'), created_at: Timestamp.now() })
+    await assertFails(updateDoc(doc(db('ana'), 'customers/c1'), archivePatch('ana')))
+  })
+
+  it('an archive that also changes another field is denied', async () => {
+    await seed('customers/c1', { ...customer('ana'), created_at: Timestamp.now() })
+    await assertFails(
+      updateDoc(doc(db('admin'), 'customers/c1'), { ...archivePatch('admin'), name: 'Other' }),
+    )
+    await assertFails(
+      updateDoc(doc(db('admin'), 'customers/c1'), { ...archivePatch('admin'), created_by: 'admin' }),
+    )
+  })
+
+  it('a member can un-archive, but cannot archive', async () => {
+    await seed('customers/c1', {
+      ...customer('ana'),
+      created_at: Timestamp.now(),
+      archived: true,
+      archived_by: 'admin',
+      archived_at: Timestamp.now(),
+    })
+    await assertSucceeds(updateDoc(doc(db('ana'), 'customers/c1'), { archived: false }))
+
+    await seed('customers/c2', { ...customer('ana'), created_at: Timestamp.now(), archived: false })
+    await assertFails(updateDoc(doc(db('ana'), 'customers/c2'), archivePatch('ana')))
+  })
+
+  it('deleting a customer is denied', async () => {
+    await seed('customers/c1', { ...customer('ana'), created_at: Timestamp.now() })
+    await assertFails(deleteDoc(doc(db('admin'), 'customers/c1')))
+    await assertFails(deleteDoc(doc(db('ana'), 'customers/c1')))
+  })
 })
 
 describe('shifts', () => {
@@ -400,6 +446,21 @@ describe('audit_log', () => {
     await assertSucceeds(setDoc(doc(db('ana'), 'audit_log/a1'), entry('ana')))
     await assertFails(setDoc(doc(db('ana'), 'audit_log/a2'), entry('ben')))
     await assertFails(setDoc(doc(db('ana'), 'audit_log/a3'), { ...entry('ana'), action: 'delete' }))
+  })
+
+  it('only an admin can record archive_customer', async () => {
+    const entry = (uid: string) => ({
+      action: 'archive_customer',
+      target_collection: 'customers',
+      target_id: 'c1',
+      by: uid,
+      at: serverTimestamp(),
+      before: { archived: false },
+      after: { archived: true },
+      reason: null,
+    })
+    await assertFails(setDoc(doc(db('ana'), 'audit_log/arch1'), entry('ana')))
+    await assertSucceeds(setDoc(doc(db('admin'), 'audit_log/arch1'), entry('admin')))
   })
 
   it('only an admin can record delete_close_day', async () => {

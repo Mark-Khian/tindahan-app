@@ -40,7 +40,7 @@ export function CustomerDetail({ customerId, onBack, onMagUtang, onBayad }: Prop
   return (
     <div className="flex flex-col gap-4">
       <Button variant="ghost" className="h-12 self-start px-2 text-base" onClick={onBack}>
-        <ArrowLeft className="size-5" /> Lahat ng customer
+        <ArrowLeft className="size-5" /> All customers
       </Button>
 
       <Card className="py-4">
@@ -50,15 +50,15 @@ export function CustomerDetail({ customerId, onBack, onMagUtang, onBayad }: Prop
             {customer?.pending && <PendingBadge />}
           </div>
           <div>
-            <div className="text-muted-foreground">Utang</div>
+            <div className="text-muted-foreground">Balance</div>
             <div className="text-4xl font-bold">{formatPeso(balance)}</div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button className="h-14 text-lg" onClick={onMagUtang}>
-              Mag-utang
+            <Button className="h-14 px-2 text-base" onClick={onMagUtang}>
+              Add credit
             </Button>
-            <Button variant="secondary" className="h-14 text-lg" onClick={onBayad} disabled={balance <= 0}>
-              Bayad
+            <Button variant="secondary" className="h-14 px-2 text-base" onClick={onBayad} disabled={balance <= 0}>
+              Pay
             </Button>
           </div>
         </CardContent>
@@ -66,7 +66,7 @@ export function CustomerDetail({ customerId, onBack, onMagUtang, onBayad }: Prop
 
       <section>
         <h2 className="mb-1 text-lg font-bold">History</h2>
-        {history.length === 0 && <p className="py-6 text-center text-muted-foreground">Wala pang record.</p>}
+        {history.length === 0 && <p className="py-6 text-center text-muted-foreground">No history yet.</p>}
         <ul>
           {history.map((h) =>
             h.kind === 'sale' ? (
@@ -75,6 +75,7 @@ export function CustomerDetail({ customerId, onBack, onMagUtang, onBayad }: Prop
                 sale={h.sale}
                 showCustomer={false}
                 showDate
+                menu
                 onVoid={(entry) => setVoidTarget({ kind: 'sales', entry })}
               />
             ) : (
@@ -82,6 +83,7 @@ export function CustomerDetail({ customerId, onBack, onMagUtang, onBayad }: Prop
                 key={h.payment.id}
                 payment={h.payment}
                 showDate
+                menu
                 onVoid={(entry) => setVoidTarget({ kind: 'payments', entry })}
               />
             ),

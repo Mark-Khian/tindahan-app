@@ -140,6 +140,32 @@ service cloud.firestore {
 
     // ---------- customers ----------
 
+    function notArchived(data) {
+      return !('archived' in data) || data.archived == false;
+    }
+
+    // Admin hide: missing/false → true, plus who and when. Nothing else may change.
+    function isArchiveUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return isAdmin()
+        && notArchived(before)
+        && after.diff(before).affectedKeys().hasOnly(['archived', 'archived_by', 'archived_at'])
+        && after.archived == true
+        && after.archived_by == request.auth.uid
+        && after.archived_at == request.time;
+    }
+
+    // Any member may bring an archived customer back. Only `archived` may change.
+    function isUnarchiveUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return isMember()
+        && before.archived == true
+        && after.diff(before).affectedKeys().hasOnly(['archived'])
+        && after.archived == false;
+    }
+
     match /customers/{id} {
       allow read: if isMember();
       allow create: if isMember()
@@ -148,10 +174,12 @@ service cloud.firestore {
         && isText(request.resource.data.name_key, 100)
         && request.resource.data.created_by == request.auth.uid
         && request.resource.data.created_at == request.time;
-      allow update: if isAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'name_key'])
-        && isText(request.resource.data.name, 100)
-        && isText(request.resource.data.name_key, 100);
+      allow update: if (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'name_key'])
+          && isText(request.resource.data.name, 100)
+          && isText(request.resource.data.name_key, 100))
+        || isArchiveUpdate()
+        || isUnarchiveUpdate();
     }
 
     // ---------- shifts ----------
@@ -206,9 +234,14 @@ service cloud.firestore {
         && hasExactly(request.resource.data, [
           'action', 'target_collection', 'target_id', 'by', 'at', 'before', 'after', 'reason'
         ])
-        && (request.resource.data.action in ['void', 'late_entry', 'close_day']
-          || (request.resource.data.action == 'delete_close_day' && isAdmin()))
-        && request.resource.data.target_collection in ['sales', 'payments', 'day_closures']
+        && ((request.resource.data.action in ['void', 'late_entry', 'close_day']
+            && request.resource.data.target_collection in ['sales', 'payments', 'day_closures'])
+          || (request.resource.data.action == 'delete_close_day'
+            && isAdmin()
+            && request.resource.data.target_collection == 'day_closures')
+          || (request.resource.data.action == 'archive_customer'
+            && isAdmin()
+            && request.resource.data.target_collection == 'customers'))
         && isText(request.resource.data.target_id, 128)
         && request.resource.data.by == request.auth.uid
         && request.resource.data.at == request.time;

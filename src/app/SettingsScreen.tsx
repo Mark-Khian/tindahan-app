@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { signOut } from 'firebase/auth'
 import { ArrowLeft } from 'lucide-react'
 import {
@@ -18,6 +18,7 @@ import { SyncIcon } from '@/components/SyncIcon'
 import { useAuth } from '@/auth/authContext'
 import { syncLabels, useSyncStatus } from '@/hooks/useSyncStatus'
 import { formatDateTime } from '@/lib/businessDate'
+import { readHiddenSuggestions, restoreHiddenSuggestions } from '@/lib/hiddenSuggestions'
 import { auth } from '@/lib/firebase'
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -33,6 +34,12 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const { member } = useAuth()
   const { state, hasPendingWrites } = useSyncStatus()
   const lastSync = member.last_sync_at?.toDate()
+  const [hiddenCount, setHiddenCount] = useState(() => readHiddenSuggestions(member.id).length)
+
+  const restoreSuggestions = () => {
+    if (!restoreHiddenSuggestions(member.id)) return
+    setHiddenCount(0)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,6 +58,13 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
           </Row>
           <Row label="Huling sync">{lastSync ? formatDateTime(lastSync) : 'Wala pa'}</Row>
           <Row label="App version">{__APP_VERSION__}</Row>
+          <Row label={`Hidden suggestions (${hiddenCount})`}>
+            {hiddenCount > 0 && (
+              <Button type="button" variant="outline" className="h-10 shrink-0 px-3" onClick={restoreSuggestions}>
+                Restore all
+              </Button>
+            )}
+          </Row>
         </CardContent>
       </Card>
 

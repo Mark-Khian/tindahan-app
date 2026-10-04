@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentProps } from 'react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { MAX_SUGGESTIONS } from '@/lib/constants'
@@ -10,6 +11,8 @@ type Props = Omit<ComponentProps<typeof Input>, 'value' | 'onChange'> & {
   /** Candidate values, most relevant first. Suggestions only: any typed value is allowed. */
   options: readonly string[]
   onPick?: (value: string) => void
+  /** When set, each suggestion gets a hide button. Called with the suggestion text. */
+  onHide?: (value: string) => void
 }
 
 export function AutocompleteInput({
@@ -17,6 +20,7 @@ export function AutocompleteInput({
   onValueChange,
   options,
   onPick,
+  onHide,
   className,
   onFocus,
   onBlur,
@@ -63,10 +67,10 @@ export function AutocompleteInput({
       {open && (
         <ul className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-md border bg-popover shadow-lg">
           {matches.map((m) => (
-            <li key={m}>
+            <li key={m} className="flex items-center">
               <button
                 type="button"
-                className="w-full px-4 py-3 text-left text-lg hover:bg-accent active:bg-accent"
+                className="min-w-0 flex-1 px-4 py-3 text-left text-lg hover:bg-accent active:bg-accent"
                 // Keep focus in the input so the tap registers before blur hides the list.
                 onPointerDown={(e) => e.preventDefault()}
                 onClick={() => {
@@ -76,6 +80,24 @@ export function AutocompleteInput({
               >
                 {m}
               </button>
+              {onHide && (
+                <button
+                  type="button"
+                  className="flex size-10 shrink-0 items-center justify-center text-muted-foreground hover:bg-accent"
+                  aria-label="Hide suggestion"
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onHide(m)
+                  }}
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </li>
           ))}
         </ul>

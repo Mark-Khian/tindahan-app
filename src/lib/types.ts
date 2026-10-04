@@ -55,6 +55,10 @@ export interface Customer {
   created_by: string
   created_at: Timestamp
   pending: boolean
+  /** Missing on older docs. Treated as not archived. */
+  archived: boolean
+  archived_by: string | null
+  archived_at: Timestamp | null
 }
 
 export interface Shift {
@@ -91,4 +95,4 @@ export interface DayClosure {
   pending: boolean
 }
 
-export type AuditAction = 'void' | 'late_entry' | 'close_day' | 'delete_close_day'
+export type AuditAction = 'void' | 'late_entry' | 'close_day' | 'delete_close_day' | 'archive_customer'
