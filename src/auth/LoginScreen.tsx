@@ -14,16 +14,16 @@ function loginErrorMessage(err: unknown): string {
       case 'auth/invalid-email':
       case 'auth/wrong-password':
       case 'auth/user-not-found':
-        return 'Mali ang email o password.'
+        return 'Wrong email or password.'
       case 'auth/network-request-failed':
-        return 'Walang internet. Kailangan ng internet sa unang login.'
+        return 'No internet. You need internet the first time you sign in.'
       case 'auth/too-many-requests':
-        return 'Masyadong maraming subok. Maghintay muna ng ilang minuto.'
+        return 'Too many tries. Wait a few minutes.'
       case 'auth/user-disabled':
-        return 'Naka-disable ang account na ito.'
+        return 'This account is disabled.'
     }
   }
-  return 'Hindi maka-login. Subukan ulit.'
+  return "Couldn't sign in. Try again."
 }
 
 export function LoginScreen() {
@@ -50,7 +50,7 @@ export function LoginScreen() {
       <div className="flex flex-col items-center gap-2 text-center">
         <Store className="size-14 text-primary" />
         <h1 className="text-3xl font-bold">Tindahan</h1>
-        <p className="text-muted-foreground">Para sa admin: i-login ang phone na ito isang beses lang.</p>
+        <p className="text-muted-foreground">For the admin: sign this phone in once.</p>
       </div>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
@@ -80,7 +80,7 @@ export function LoginScreen() {
         </div>
         {error && <p className="rounded-md bg-destructive/10 p-3 text-destructive">{error}</p>}
         <Button type="submit" className="h-14 text-lg" disabled={busy}>
-          {busy ? 'Naglo-login...' : 'Mag-login'}
+          {busy ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
     </div>

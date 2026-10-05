@@ -8,8 +8,8 @@ const App = lazy(() => import('./App.tsx'))
 export function Root() {
   if (missingFirebaseEnv.length > 0) {
     return (
-      <FullScreenMessage title="Kulang ang Firebase config">
-        <p className="text-muted-foreground">Ilagay ang mga ito sa .env.local:</p>
+      <FullScreenMessage title="Missing Firebase config">
+        <p className="text-muted-foreground">Add these to .env.local:</p>
         <pre className="rounded-md bg-muted p-3 text-left text-sm">{missingFirebaseEnv.join('\n')}</pre>
       </FullScreenMessage>
     )

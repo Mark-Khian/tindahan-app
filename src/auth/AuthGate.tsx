@@ -50,12 +50,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (noAccess) {
     return (
-      <FullScreenMessage title="Walang access" icon={<ShieldX className="size-14 text-destructive" />}>
+      <FullScreenMessage title="No access" icon={<ShieldX className="size-14 text-destructive" />}>
         <p className="text-muted-foreground">
-          Hindi naka-register ang account na ito sa tindahan. Kausapin ang admin.
+          This account isn't registered at the store. Talk to an admin.
         </p>
         <Button className="h-12 px-8 text-base" onClick={() => setNoAccess(false)}>
-          Bumalik sa login
+          Back to sign in
         </Button>
       </FullScreenMessage>
     )
@@ -69,9 +69,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!member || member.id !== user.uid) {
     return (
-      <FullScreenMessage title="Kinukuha ang account..." icon={<Loader2 className="size-10 animate-spin" />}>
+      <FullScreenMessage title="Loading account…" icon={<Loader2 className="size-10 animate-spin" />}>
         {!online && (
-          <p className="text-muted-foreground">Walang internet. Kailangan ng internet sa unang bukas.</p>
+          <p className="text-muted-foreground">No internet. You need internet the first time you open the app.</p>
         )}
       </FullScreenMessage>
     )
