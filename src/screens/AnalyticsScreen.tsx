@@ -26,14 +26,14 @@ const AnalyticsCharts = lazy(() =>
 )
 
 const RANGES = [
-  { value: '7d', label: '7 araw' },
-  { value: '30d', label: '30 araw' },
-  { value: 'month', label: 'Ngayong buwan' },
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
+  { value: 'month', label: 'This month' },
 ] as const
 
 const TOP_BY = [
-  { value: 'qty', label: 'Dami' },
-  { value: 'amount', label: 'Halaga' },
+  { value: 'qty', label: 'Qty' },
+  { value: 'amount', label: 'Amount' },
 ] as const
 
 const EMPTY: AnalyticsSale[] = []
@@ -71,12 +71,12 @@ export function AnalyticsScreen() {
     start === end ? formatBusinessDate(start) : `${formatBusinessDate(start)} – ${formatBusinessDate(end)}`
 
   return (
-    <div className="flex flex-col gap-4">
-      <SegmentedControl label="Panahon" options={RANGES} value={range} onChange={setRange} />
+    <div className="flex min-w-0 flex-col gap-4">
+      <SegmentedControl label="Range" options={RANGES} value={range} onChange={setRange} />
 
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 text-sm text-muted-foreground">
-          {result ? `Na-update: ${formatDateTime(result.fetchedAt)}` : 'Naglo-load…'}
+          {result ? `Updated: ${formatDateTime(result.fetchedAt)}` : 'Loading…'}
         </div>
         <Button variant="outline" className="h-11 shrink-0" onClick={refresh} disabled={loading}>
           <RefreshCw className={cn('size-4', loading && 'animate-spin')} /> Refresh
@@ -85,43 +85,43 @@ export function AnalyticsScreen() {
 
       {result && (result.fromCache || !online) && (
         <div className="flex items-center gap-2 rounded-lg border bg-muted p-3 text-sm">
-          <WifiOff className="size-4 shrink-0" /> Offline — maaaring kulang ang data.
+          <WifiOff className="size-4 shrink-0" /> Offline — data may be incomplete.
         </div>
       )}
 
       {error && (
         <p className="rounded-lg border border-destructive p-3 text-sm text-destructive">
-          Hindi ma-load ang data. Subukan ang Refresh.
+          Couldn't load the data. Try Refresh.
         </p>
       )}
 
       <div className="text-muted-foreground">{rangeTitle}</div>
 
       {!result ? null : summary.count === 0 ? (
-        <p className="py-10 text-center text-muted-foreground">Wala pang benta sa panahong ito.</p>
+        <p className="py-10 text-center text-muted-foreground">No sales in this range.</p>
       ) : (
         <>
           <Card className="gap-3 py-4">
             <CardContent className="flex flex-col gap-3 px-4">
               <div>
-                <div className="text-muted-foreground">Kabuuang benta</div>
+                <div className="text-muted-foreground">Total sales</div>
                 <div className="text-4xl font-bold break-words">{formatPeso(summary.gross)}</div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Stat label="Bilang ng benta" value={String(summary.count)} />
-                <Stat label="Average kada araw (kasama ngayon)" value={formatPeso(summary.avgPerDay)} />
+                <Stat label="Number of sales" value={String(summary.count)} />
+                <Stat label="Daily average (incl. today)" value={formatPeso(summary.avgPerDay)} />
                 <Stat label="Cash" value={formatPeso(summary.cash)} />
-                <Stat label="Utang" value={formatPeso(summary.utang)} />
+                <Stat label="Credit" value={formatPeso(summary.utang)} />
               </div>
             </CardContent>
           </Card>
 
           <Card className="gap-3 py-4">
             <CardHeader className="px-4">
-              <CardTitle className="text-lg">Top 10 paninda</CardTitle>
+              <CardTitle className="text-lg">Top 10 items</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2 px-4">
-              <SegmentedControl label="Ayusin ayon sa" size="sm" options={TOP_BY} value={topBy} onChange={setTopBy} />
+              <SegmentedControl label="Sort by" size="sm" options={TOP_BY} value={topBy} onChange={setTopBy} />
               <ol>
                 {top.map((t) => (
                   <li key={t.item_key} className="flex items-start gap-3 border-b py-2 last:border-b-0">
@@ -144,12 +144,12 @@ export function AnalyticsScreen() {
           </Card>
 
           <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-muted" />}>
-            <AnalyticsCharts hours={hours} weekdays={weekdays} trend={trend} />
+            <AnalyticsCharts hours={hours} weekdays={weekdays} trend={trend} showWeekday={range !== '7d'} />
           </Suspense>
 
           <Card className="gap-3 py-4">
             <CardHeader className="px-4">
-              <CardTitle className="text-lg">Kada bantay</CardTitle>
+              <CardTitle className="text-lg">By person</CardTitle>
             </CardHeader>
             <CardContent className="px-4">
               <ul>
@@ -160,9 +160,9 @@ export function AnalyticsScreen() {
                       <span className="shrink-0 font-bold">{formatPeso(b.gross)}</span>
                     </div>
                     <div className="flex flex-wrap gap-x-3 text-sm text-muted-foreground">
-                      <span>{b.count} benta</span>
+                      <span>{b.count} sales</span>
                       <span>Cash: {formatPeso(b.cash)}</span>
-                      <span>Utang: {formatPeso(b.utang)}</span>
+                      <span>Credit: {formatPeso(b.utang)}</span>
                     </div>
                   </li>
                 ))}

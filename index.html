@@ -5,7 +5,34 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#047857" />
+    <meta name="theme-color" content="#ffffff" />
+    <script>
+      ;(function () {
+        var choice = 'system'
+        try {
+          var saved = localStorage.getItem('theme')
+          if (saved === 'light' || saved === 'dark' || saved === 'system') choice = saved
+        } catch (e) {}
+        function systemDark() {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches
+        }
+        function apply(next) {
+          var dark = next === 'dark' || (next === 'system' && systemDark())
+          document.documentElement.classList.toggle('dark', dark)
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', dark ? '#171717' : '#ffffff')
+        }
+        apply(choice)
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+          var current = 'system'
+          try {
+            var saved = localStorage.getItem('theme')
+            if (saved === 'light' || saved === 'dark' || saved === 'system') current = saved
+          } catch (e) {}
+          if (current === 'system') apply('system')
+        })
+      })()
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />

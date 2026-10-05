@@ -33,7 +33,7 @@ function TooltipBox({ title, children }: { title: string; children: ReactNode })
 
 function ChartCard({ title, caption, children }: { title: string; caption?: string; children: ReactNode }) {
   return (
-    <Card className="gap-3 py-4">
+    <Card className="min-w-0 gap-3 overflow-hidden py-4">
       <CardHeader className="px-4">
         <CardTitle className="text-lg">{title}</CardTitle>
         {caption && <p className="text-sm text-muted-foreground">{caption}</p>}
@@ -47,14 +47,17 @@ export function AnalyticsCharts({
   hours,
   weekdays,
   trend,
+  showWeekday,
 }: {
   hours: HourBucket[]
   weekdays: WeekdayAverage[]
   trend: DailyPoint[]
+  /** Hidden on a 7-day range, where each weekday appears at most once. */
+  showWeekday: boolean
 }) {
   return (
     <>
-      <ChartCard title="Benta kada oras">
+      <ChartCard title="Sales by hour">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={hours} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke={GRID} />
@@ -72,9 +75,10 @@ export function AnalyticsCharts({
         </ResponsiveContainer>
       </ChartCard>
 
+      {showWeekday && (
       <ChartCard
-        title="Benta kada araw ng linggo"
-        caption="Average: kabuuang benta sa araw na iyon ÷ ilang beses itong lumabas sa panahong ito."
+        title="Sales by weekday"
+        caption="Average sales for each weekday in this range."
       >
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={weekdays} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 0 }}>
@@ -88,7 +92,7 @@ export function AnalyticsCharts({
                 if (!active || !p) return null
                 return (
                   <TooltipBox title={p.name}>
-                    {p.occurrences ? formatPeso(p.average) : 'Wala sa panahong ito'}
+                    {p.occurrences ? formatPeso(p.average) : 'Not in this range'}
                   </TooltipBox>
                 )
               }}
@@ -97,8 +101,9 @@ export function AnalyticsCharts({
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
+      )}
 
-      <ChartCard title="Benta kada araw">
+      <ChartCard title="Daily sales">
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={trend} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke={GRID} />
@@ -114,7 +119,7 @@ export function AnalyticsCharts({
               }}
             />
             <Line
-              type="monotone"
+              type="linear"
               dataKey="amount"
               stroke={COLOR}
               strokeWidth={2}

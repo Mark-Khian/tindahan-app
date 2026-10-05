@@ -18,7 +18,7 @@ import type { ItemInput } from '@/data/writes'
 import { useItemSuggestions } from '@/hooks/useItemSuggestions'
 import { hideSuggestion, readHiddenSuggestions } from '@/lib/hiddenSuggestions'
 import { computeSubtotal, formatPeso, parseNumber } from '@/lib/money'
-import { looksLikeMultipleItems } from '@/lib/multipleItems'
+import { itemEntryCheck, parseQtyPriceFromName, type ParsedQtyPrice } from '@/lib/parseQtyPriceFromName'
 import { normalizeKey } from '@/lib/normalize'
 
 interface Props {
@@ -40,11 +40,13 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled, autoFocusI
   const [qty, setQty] = useState('1')
   const [price, setPrice] = useState('')
   const [multiOpen, setMultiOpen] = useState(false)
+  const [suggestion, setSuggestion] = useState<{ original: ItemInput; parsed: ParsedQtyPrice } | null>(null)
   const itemRef = useRef<HTMLInputElement>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
   const priceRef = useRef<HTMLInputElement>(null)
   const pendingItem = useRef<ItemInput | null>(null)
   const savingAnyway = useRef(false)
+  const suggestionHandled = useRef(false)
   const hidden = useMemo(() => new Set(hiddenKeys), [hiddenKeys])
   const suggestions = useMemo(
     () => allSuggestions.filter((option) => !hidden.has(normalizeKey(option))),
@@ -92,12 +94,40 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled, autoFocusI
     if (priceValue === null || priceValue < 0) return priceRef.current?.focus()
 
     const item = { item_name: name.trim(), qty: qtyValue, unit_price: priceValue }
-    if (looksLikeMultipleItems(item.item_name)) {
+    const step = itemEntryCheck(item.item_name, item.qty)
+    if (step === 'multi') {
       pendingItem.current = item
       setMultiOpen(true)
       return
     }
+    if (step === 'suggest') {
+      const parsed = parseQtyPriceFromName(item.item_name)
+      if (parsed) {
+        setSuggestion({ original: item, parsed })
+        return
+      }
+    }
     commit(item)
+  }
+
+  const useSuggestion = () => {
+    const current = suggestion
+    if (!current) return
+    suggestionHandled.current = true
+    setSuggestion(null)
+    const { parsed } = current
+    setName(parsed.item)
+    setQty(String(parsed.qty))
+    setPrice(String(parsed.unitPrice))
+    commit({ item_name: parsed.item, qty: parsed.qty, unit_price: parsed.unitPrice })
+  }
+
+  const keepTyped = () => {
+    const current = suggestion
+    if (!current) return
+    suggestionHandled.current = true
+    setSuggestion(null)
+    commit(current.original)
   }
 
   const saveAnyway = () => {
@@ -205,6 +235,36 @@ export function ItemEntryForm({ onSave, saveLabel = 'Save', disabled, autoFocusI
             <AlertDialogCancel className="h-12">Edit</AlertDialogCancel>
             <AlertDialogAction className="h-12" onClick={saveAnyway}>
               Save anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={suggestion !== null}
+        onOpenChange={(open) => {
+          if (open) {
+            suggestionHandled.current = false
+            return
+          }
+          setSuggestion(null)
+          if (suggestionHandled.current) return
+          itemRef.current?.focus()
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base">
+              {suggestion
+                ? `Did you mean: ${suggestion.parsed.item} · Qty ${suggestion.parsed.qty} · Price ${formatPeso(suggestion.parsed.unitPrice)} (Subtotal ${formatPeso(computeSubtotal(suggestion.parsed.qty, suggestion.parsed.unitPrice))})?`
+                : ''}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-12" onClick={keepTyped}>
+              Keep as typed
+            </AlertDialogCancel>
+            <AlertDialogAction className="h-12" onClick={useSuggestion}>
+              Use this
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

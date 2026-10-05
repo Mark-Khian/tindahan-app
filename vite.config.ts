@@ -49,7 +49,9 @@ export default defineConfig({
     },
   },
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+    __APP_VERSION__: JSON.stringify(
+      `${process.env.npm_package_version ?? '0.0.0'} · ${process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'dev'}`,
+    ),
   },
   test: {
     include: ['src/**/*.test.ts'],
